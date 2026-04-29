@@ -189,6 +189,12 @@ fun HomeScreen() {
                         }
                     }
                 }
+                "Community" -> {
+                    CommunityScreen()
+                }
+                "Profile" -> {
+                    ProfileScreen()
+                }
                 else -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text("Próximamente: $selectedTab", color = Color.White)
