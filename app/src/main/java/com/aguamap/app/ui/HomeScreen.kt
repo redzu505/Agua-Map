@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.sp
 import com.aguamap.app.domain.WaterPoint
 import com.aguamap.app.domain.WaterPointStatus
 import com.aguamap.app.domain.WaterPointType
+import com.aguamap.app.ui.components.MapLibreView
 import com.aguamap.app.ui.components.WaterPointCard
 import com.aguamap.app.ui.theme.AguaMapTheme
 
@@ -31,6 +32,7 @@ fun HomeScreen() {
     var searchQuery by remember { mutableStateOf("") }
     val filters = listOf("Todos", "Fuentes", "Pozos", "Filtrada", "Grifo")
     var selectedFilter by remember { mutableStateOf("Todos") }
+    var selectedTab by remember { mutableStateOf("Points") }
 
     // Mock data based on the design
     val waterPoints = listOf(
@@ -42,33 +44,35 @@ fun HomeScreen() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.WaterDrop,
-                            contentDescription = null,
-                            tint = Color(0xFF8B2CF5),
-                            modifier = Modifier.size(24.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            "AguaMap",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 24.sp,
-                            color = Color.White
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { /* Filter action */ }) {
-                        Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = Color.LightGray)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color(0xFF0C141F).copy(alpha = 0.8f)
+            if (selectedTab == "Points") {
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.WaterDrop,
+                                contentDescription = null,
+                                tint = Color(0xFF8B2CF5),
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "AguaMap",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 24.sp,
+                                color = Color.White
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { /* Filter action */ }) {
+                            Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = Color.LightGray)
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = Color(0xFF0C141F).copy(alpha = 0.8f)
+                    )
                 )
-            )
+            }
         },
         bottomBar = {
             NavigationBar(
@@ -78,103 +82,118 @@ fun HomeScreen() {
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Map, contentDescription = "Map") },
                     label = { Text("Map") },
-                    selected = false,
-                    onClick = { }
+                    selected = selectedTab == "Map",
+                    onClick = { selectedTab = "Map" }
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.WaterDrop, contentDescription = "Points") },
                     label = { Text("Points") },
-                    selected = true,
-                    onClick = { }
+                    selected = selectedTab == "Points",
+                    onClick = { selectedTab = "Points" }
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Group, contentDescription = "Community") },
                     label = { Text("Community") },
-                    selected = false,
-                    onClick = { }
+                    selected = selectedTab == "Community",
+                    onClick = { selectedTab = "Community" }
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
                     label = { Text("Profile") },
-                    selected = false,
-                    onClick = { }
+                    selected = selectedTab == "Profile",
+                    onClick = { selectedTab = "Profile" }
                 )
             }
         },
         floatingActionButton = {
-            FloatingActionButton(
-                onClick = { /* Add point */ },
-                containerColor = Color(0xFFD8B9FF),
-                contentColor = Color(0xFF450086),
-                shape = CircleShape
-            ) {
-                Icon(Icons.Default.Add, contentDescription = "Add")
+            if (selectedTab == "Points" || selectedTab == "Map") {
+                FloatingActionButton(
+                    onClick = { /* Add point */ },
+                    containerColor = Color(0xFFD8B9FF),
+                    contentColor = Color(0xFF450086),
+                    shape = CircleShape
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Add")
+                }
             }
         },
         containerColor = Color(0xFF0C141F)
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .padding(horizontal = 16.dp)
-        ) {
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Search Bar
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                placeholder = { Text("Buscar puntos de agua...", color = Color.Gray) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White.copy(alpha = 0.05f),
-                    unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                    focusedBorderColor = Color(0xFF3EDAE3),
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedTextColor = Color.White,
-                    unfocusedTextColor = Color.White
-                )
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Filters
-            LazyRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                items(filters) { filter ->
-                    val isSelected = filter == selectedFilter
-                    FilterChip(
-                        selected = isSelected,
-                        onClick = { selectedFilter = filter },
-                        label = { Text(filter) },
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = Color.White.copy(alpha = 0.05f),
-                            labelColor = Color.LightGray,
-                            selectedContainerColor = Color(0xFF8B2CF5),
-                            selectedLabelColor = Color.White
-                        ),
-                        border = null,
-                        shape = RoundedCornerShape(20.dp)
-                    )
+        Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+            when (selectedTab) {
+                "Map" -> {
+                    MapLibreView(modifier = Modifier.fillMaxSize())
                 }
-            }
+                "Points" -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        Spacer(modifier = Modifier.height(16.dp))
 
-            Spacer(modifier = Modifier.height(16.dp))
+                        // Search Bar
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = { Text("Buscar puntos de agua...", color = Color.Gray) },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray) },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                focusedBorderColor = Color(0xFF3EDAE3),
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
 
-            // Water Points List
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-                modifier = Modifier.fillMaxSize()
-            ) {
-                items(waterPoints) { point ->
-                    WaterPointCard(point)
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Filters
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(filters) { filter ->
+                                val isSelected = filter == selectedFilter
+                                FilterChip(
+                                    selected = isSelected,
+                                    onClick = { selectedFilter = filter },
+                                    label = { Text(filter) },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        containerColor = Color.White.copy(alpha = 0.05f),
+                                        labelColor = Color.LightGray,
+                                        selectedContainerColor = Color(0xFF8B2CF5),
+                                        selectedLabelColor = Color.White
+                                    ),
+                                    border = null,
+                                    shape = RoundedCornerShape(20.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        // Water Points List
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            modifier = Modifier.fillMaxSize()
+                        ) {
+                            items(waterPoints) { point ->
+                                WaterPointCard(point)
+                            }
+                            item { Spacer(modifier = Modifier.height(80.dp)) } // Space for FAB
+                        }
+                    }
                 }
-                item { Spacer(modifier = Modifier.height(80.dp)) } // Space for FAB
+                else -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text("Próximamente: $selectedTab", color = Color.White)
+                    }
+                }
             }
         }
     }
