@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.aguamap.app.ui.theme.AguaMapTheme
 
 enum class AuthState {
-    START, LOGIN, REGISTER
+    START, LOGIN, REGISTER, HOME
 }
 
 @Composable
@@ -54,15 +54,17 @@ fun LoginScreen() {
             when (state) {
                 AuthState.START -> StartView(
                     onLoginClick = { currentState = AuthState.LOGIN },
-                    onGuestClick = { /* Navegar a Vista Principal */ }
+                    onGuestClick = { currentState = AuthState.HOME }
                 )
                 AuthState.LOGIN -> LoginView(
                     onBack = { currentState = AuthState.START },
-                    onRegisterClick = { currentState = AuthState.REGISTER }
+                    onRegisterClick = { currentState = AuthState.REGISTER },
+                    onLoginSuccess = { currentState = AuthState.HOME }
                 )
                 AuthState.REGISTER -> RegisterView(
                     onBack = { currentState = AuthState.LOGIN }
                 )
+                AuthState.HOME -> HomeScreen()
             }
         }
     }
@@ -152,7 +154,7 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
 }
 
 @Composable
-fun LoginView(onBack: () -> Unit, onRegisterClick: () -> Unit) {
+fun LoginView(onBack: () -> Unit, onRegisterClick: () -> Unit, onLoginSuccess: () -> Unit) {
     var userId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
@@ -170,7 +172,7 @@ fun LoginView(onBack: () -> Unit, onRegisterClick: () -> Unit) {
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = { /* Lógica de Login */ },
+            onClick = { onLoginSuccess() },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8B2CF5))
