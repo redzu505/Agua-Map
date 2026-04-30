@@ -51,9 +51,8 @@ fun MapLibreView(modifier: Modifier = Modifier) {
         factory = {
             mapView.apply {
                 getMapAsync { map ->
-                    // Usamos un estilo más detallado (OpenFreeMap o CartoDB Voyager)
-                    // Este estilo incluye calles, carreteras y nombres.
-                    map.setStyle("https://tiles.openfreemap.org/styles/bright") { style ->
+                    // Usamos un estilo claro (liberty o bright)
+                    map.setStyle("https://tiles.openfreemap.org/styles/liberty") { style ->
                         
                         // Una vez cargado el estilo, añadimos un marcador en SJL
                         val sjl = LatLng(-11.9763, -77.0002)

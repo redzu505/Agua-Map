@@ -26,40 +26,47 @@ import com.aguamap.app.ui.components.GlassCard
 
 @Composable
 fun ProfileScreen() {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-        item { Spacer(modifier = Modifier.height(16.dp)) }
+    val bgLight = Color(0xFFF0F9FF)
+    
+    Box(modifier = Modifier.fillMaxSize().background(bgLight)) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            item { Spacer(modifier = Modifier.height(16.dp)) }
 
-        // Profile Header Section
-        item {
-            ProfileHeader()
+            // Profile Header Section
+            item {
+                ProfileHeader()
+            }
+
+            // Impact Section (Bento Style)
+            item {
+                ImpactSection()
+            }
+
+            // Saved Points Section
+            item {
+                SavedPointsSection()
+            }
+
+            // Settings Section
+            item {
+                SettingsSection()
+            }
+
+            item { Spacer(modifier = Modifier.height(32.dp)) }
         }
-
-        // Impact Section (Bento Style)
-        item {
-            ImpactSection()
-        }
-
-        // Saved Points Section
-        item {
-            SavedPointsSection()
-        }
-
-        // Settings Section
-        item {
-            SettingsSection()
-        }
-
-        item { Spacer(modifier = Modifier.height(32.dp)) }
     }
 }
 
 @Composable
 fun ProfileHeader() {
+    val darkBlue = Color(0xFF01579B)
+    val celeste = Color(0xFF03A9F4)
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -71,7 +78,7 @@ fun ProfileHeader() {
                     .clip(CircleShape)
                     .background(
                         Brush.linearGradient(
-                            colors = listOf(Color(0xFF8B2CF5), Color(0xFF3EDAE3))
+                            colors = listOf(celeste, darkBlue)
                         )
                     )
                     .padding(3.dp)
@@ -79,26 +86,25 @@ fun ProfileHeader() {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     shape = CircleShape,
-                    color = Color(0xFF0C141F)
+                    color = Color.White
                 ) {
-                    // Placeholder for Profile Image
                     Icon(
                         Icons.Default.Person,
                         contentDescription = null,
-                        tint = Color.Gray,
+                        tint = celeste.copy(alpha = 0.5f),
                         modifier = Modifier.padding(20.dp)
                     )
                 }
             }
             Surface(
-                color = Color(0xFF3EDAE3),
+                color = celeste,
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.size(24.dp)
             ) {
                 Icon(
                     Icons.Default.Check,
                     contentDescription = "Verified",
-                    tint = Color(0xFF003739),
+                    tint = Color.White,
                     modifier = Modifier.padding(4.dp)
                 )
             }
@@ -109,7 +115,7 @@ fun ProfileHeader() {
             "Mateo Fernández",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = darkBlue
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -119,13 +125,13 @@ fun ProfileHeader() {
             Icon(
                 Icons.Default.MilitaryTech,
                 contentDescription = null,
-                tint = Color(0xFF3EDAE3),
+                tint = celeste,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 "Guardián del Agua",
-                color = Color(0xFF3EDAE3),
+                color = celeste,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -135,10 +141,13 @@ fun ProfileHeader() {
 
 @Composable
 fun ImpactSection() {
+    val darkBlue = Color(0xFF01579B)
+    val celeste = Color(0xFF03A9F4)
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             "Tu Impacto",
-            color = Color.Gray,
+            color = darkBlue.copy(alpha = 0.6f),
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium
         )
@@ -151,44 +160,48 @@ fun ImpactSection() {
                 icon = Icons.Default.WaterDrop,
                 value = "42L",
                 label = "Agua consumida",
-                accentColor = Color(0xFF8B2CF5)
+                accentColor = darkBlue
             )
             ImpactCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Recycling,
                 value = "84",
                 label = "Botellas evitadas",
-                accentColor = Color(0xFF3EDAE3)
+                accentColor = celeste
             )
         }
-        GlassCard(
-            modifier = Modifier.fillMaxWidth()
+        
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
-                        color = Color(0xFF00747A).copy(alpha = 0.2f),
+                        color = celeste.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             Icons.Default.AddLocationAlt,
                             contentDescription = null,
-                            tint = Color(0xFF3EDAE3),
+                            tint = celeste,
                             modifier = Modifier.padding(12.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
-                        Text("12", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("12", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = darkBlue)
                         Text("Puntos reportados", fontSize = 14.sp, color = Color.Gray)
                     }
                 }
-                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.Gray)
+                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.LightGray)
             }
         }
     }
@@ -202,16 +215,19 @@ fun ImpactCard(
     label: String,
     accentColor: Color
 ) {
-    GlassCard(
-        modifier = modifier.aspectRatio(1f)
+    Card(
+        modifier = modifier.aspectRatio(1f),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Icon(icon, contentDescription = null, tint = accentColor)
             Column {
-                Text(value, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(value, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF01579B))
                 Text(label, fontSize = 12.sp, color = Color.Gray)
             }
         }
@@ -220,6 +236,9 @@ fun ImpactCard(
 
 @Composable
 fun SavedPointsSection() {
+    val darkBlue = Color(0xFF01579B)
+    val celeste = Color(0xFF03A9F4)
+
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -228,45 +247,49 @@ fun SavedPointsSection() {
         ) {
             Text(
                 "Mis Puntos Guardados",
-                color = Color.Gray,
+                color = darkBlue.copy(alpha = 0.6f),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 "Ver todos",
-                color = Color(0xFF8B2CF5),
+                color = celeste,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
         }
         
-        SavedPointItem("Fuente Parque Central", "Potable • 200m", Color(0xFF3EDAE3))
-        SavedPointItem("Estación Eco-Sustentable", "Filtrada • 1.2km", Color(0xFF3EDAE3))
+        SavedPointItem("Fuente Parque Central", "Potable • 200m", Color(0xFF4CAF50))
+        SavedPointItem("Estación Eco-Sustentable", "Filtrada • 1.2km", Color(0xFF4CAF50))
     }
 }
 
 @Composable
 fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
-    GlassCard(
+    val darkBlue = Color(0xFF01579B)
+    
+    Card(
         modifier = Modifier.fillMaxWidth(),
-        cornerRadius = 12.dp
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(1.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().padding(16.dp)
         ) {
             Box(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.White.copy(alpha = 0.1f)),
+                    .background(Color(0xFF03A9F4).copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Water, contentDescription = null, tint = Color.White)
+                Icon(Icons.Default.Water, contentDescription = null, tint = Color(0xFF03A9F4))
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(title, color = darkBlue, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
@@ -278,48 +301,52 @@ fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
                     Text(subtitle, color = Color.Gray, fontSize = 14.sp)
                 }
             }
-            Icon(Icons.Default.Bookmark, contentDescription = null, tint = Color.Gray)
+            Icon(Icons.Default.Bookmark, contentDescription = null, tint = Color.LightGray)
         }
     }
 }
 
 @Composable
 fun SettingsSection() {
+    val darkBlue = Color(0xFF01579B)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SettingsItem(Icons.Default.Settings, "Ajustes")
-        SettingsItem(Icons.Default.Shield, "Privacidad")
+        SettingsItem(Icons.Default.Settings, "Ajustes", darkBlue)
+        SettingsItem(Icons.Default.Shield, "Privacidad", darkBlue)
         Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
                 .clickable { /* Logout */ }
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFFF4545))
+            Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFD32F2F))
             Spacer(modifier = Modifier.width(12.dp))
-            Text("Cerrar Sesión", color = Color(0xFFFF4545), fontWeight = FontWeight.Bold)
+            Text("Cerrar Sesión", color = Color(0xFFD32F2F), fontWeight = FontWeight.Bold)
         }
     }
 }
 
 @Composable
-fun SettingsItem(icon: ImageVector, label: String) {
-    GlassCard(
+fun SettingsItem(icon: ImageVector, label: String, textColor: Color) {
+    Card(
         modifier = Modifier.fillMaxWidth().clickable { },
-        cornerRadius = 12.dp
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(1.dp)
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, tint = Color.Gray)
                 Spacer(modifier = Modifier.width(12.dp))
-                Text(label, color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text(label, color = textColor, fontWeight = FontWeight.SemiBold)
             }
-            Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+            Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(16.dp))
         }
     }
 }

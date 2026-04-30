@@ -24,14 +24,18 @@ import com.aguamap.app.domain.WaterPointType
 
 @Composable
 fun WaterPointCard(point: WaterPoint) {
+    val darkBlue = Color(0xFF01579B)
+    val celeste = Color(0xFF03A9F4)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = Color.White.copy(alpha = 0.08f)
-        )
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
@@ -48,7 +52,7 @@ fun WaterPointCard(point: WaterPoint) {
                     Surface(
                         modifier = Modifier.size(48.dp),
                         shape = RoundedCornerShape(12.dp),
-                        color = getIconBackgroundColor(point.type).copy(alpha = 0.2f)
+                        color = getIconBackgroundColor(point.type).copy(alpha = 0.1f)
                     ) {
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
@@ -66,29 +70,31 @@ fun WaterPointCard(point: WaterPoint) {
                         Text(
                             text = point.name,
                             style = MaterialTheme.typography.titleMedium,
-                            color = Color.White,
+                            color = darkBlue,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = point.address,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.LightGray
+                            color = Color.Gray
                         )
                     }
                 }
                 
                 // Status Badge
+                val statusColor = if (point.status == WaterPointStatus.OPERATIVO) 
+                    Color(0xFF2E7D32) 
+                else 
+                    Color(0xFFC62828)
+                
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = if (point.status == WaterPointStatus.OPERATIVO) 
-                        Color(0xFF00E475).copy(alpha = 0.2f) 
-                    else 
-                        Color(0xFFFFB4AB).copy(alpha = 0.2f)
+                    color = statusColor.copy(alpha = 0.1f)
                 ) {
                     Text(
                         text = point.status.name,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        color = if (point.status == WaterPointStatus.OPERATIVO) Color(0xFF00E475) else Color(0xFFFFB4AB),
+                        color = statusColor,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -102,11 +108,11 @@ fun WaterPointCard(point: WaterPoint) {
                 horizontalArrangement = Arrangement.Start,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                InfoItem(icon = Icons.Default.Star, text = point.rating.toString(), color = Color(0xFF3EDAE3))
+                InfoItem(icon = Icons.Default.Star, text = point.rating.toString(), color = Color(0xFFFFA000))
                 Spacer(modifier = Modifier.width(16.dp))
-                InfoItem(icon = Icons.Default.PinDrop, text = point.distance, color = Color.LightGray)
+                InfoItem(icon = Icons.Default.PinDrop, text = point.distance, color = Color.Gray)
                 Spacer(modifier = Modifier.width(16.dp))
-                InfoItem(icon = Icons.Default.Schedule, text = point.hours, color = Color.LightGray)
+                InfoItem(icon = Icons.Default.Schedule, text = point.hours, color = Color.Gray)
             }
         }
     }
@@ -125,7 +131,7 @@ fun InfoItem(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String
         Text(
             text = text,
             style = MaterialTheme.typography.bodySmall,
-            color = Color.LightGray,
+            color = Color.Gray,
             fontWeight = FontWeight.Medium
         )
     }
@@ -139,8 +145,8 @@ fun getIconForType(type: WaterPointType) = when(type) {
 }
 
 fun getIconBackgroundColor(type: WaterPointType) = when(type) {
-    WaterPointType.FUENTE -> Color(0xFF8B2CF5)
-    WaterPointType.POZO -> Color(0xFF3EDAE3)
-    WaterPointType.FILTRADA -> Color(0xFF00E475)
-    WaterPointType.GRIFO -> Color(0xFFD8B9FF)
+    WaterPointType.FUENTE -> Color(0xFF03A9F4)
+    WaterPointType.POZO -> Color(0xFF01579B)
+    WaterPointType.FILTRADA -> Color(0xFF26C6DA)
+    WaterPointType.GRIFO -> Color(0xFF0288D1)
 }
