@@ -14,13 +14,18 @@ data class WaterPoint(
     val status: WaterPointStatus,
     val type: WaterPointType,
     val latitude: Double = 0.0,
-    val longitude: Double = 0.0
+    val longitude: Double = 0.0,
+    val imageUrl: String? = null
 )
 
-enum class WaterPointStatus {
-    OPERATIVO, MANTENIMIENTO
+enum class WaterPointStatus(val displayName: String) {
+    OPERATIVO("Operativo"), 
+    MANTENIMIENTO("En Mantenimiento")
 }
 
-enum class WaterPointType {
-    FUENTE, POZO, FILTRADA, GRIFO
+enum class WaterPointType(val displayName: String) {
+    FUENTE("Fuente"), 
+    POZO("Pozo"), 
+    FILTRADA("Agua Filtrada"), 
+    GRIFO("Grifo Público")
 }

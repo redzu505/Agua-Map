@@ -8,14 +8,23 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.aguamap.app.domain.WaterPoint
 import com.mapbox.mapboxsdk.Mapbox
 import com.mapbox.mapboxsdk.annotations.MarkerOptions
+import com.mapbox.mapboxsdk.camera.CameraPosition
 import com.mapbox.mapboxsdk.camera.CameraUpdateFactory
 import com.mapbox.mapboxsdk.geometry.LatLng
+import com.mapbox.mapboxsdk.location.LocationComponentActivationOptions
+import com.mapbox.mapboxsdk.location.modes.CameraMode
+import com.mapbox.mapboxsdk.location.modes.RenderMode
 import com.mapbox.mapboxsdk.maps.MapView
 
 @Composable
-fun MapLibreView(modifier: Modifier = Modifier) {
+fun MapLibreView(
+    modifier: Modifier = Modifier,
+    waterPoints: List<WaterPoint> = emptyList(),
+    onMarkerClick: (String) -> Unit = {}
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -54,16 +63,44 @@ fun MapLibreView(modifier: Modifier = Modifier) {
                     // Usamos un estilo claro (liberty o bright)
                     map.setStyle("https://tiles.openfreemap.org/styles/liberty") { style ->
                         
-                        // Una vez cargado el estilo, añadimos un marcador en SJL
-                        val sjl = LatLng(-11.9763, -77.0002)
+                        // Añadimos marcadores dinámicos
+                        waterPoints.forEach { point ->
+                            map.addMarker(MarkerOptions()
+                                .position(LatLng(point.latitude, point.longitude))
+                                .title(point.name)
+                                .snippet(point.id)) // Usamos snippet para guardar el ID
+                        }
+
+                        // Listener de clicks en marcadores
+                        map.setOnMarkerClickListener { marker ->
+                            marker.snippet?.let { onMarkerClick(it) }
+                            true
+                        }
+
+                        // Activar capa de ubicación si hay permisos
+                        if (com.aguamap.app.util.LocationUtils.hasLocationPermissions(context)) {
+                            try {
+                                val locationComponent = map.locationComponent
+                                locationComponent.activateLocationComponent(
+                                    LocationComponentActivationOptions.builder(context, style).build()
+                                )
+                                locationComponent.isLocationComponentEnabled = true
+                                locationComponent.cameraMode = CameraMode.TRACKING
+                                locationComponent.renderMode = RenderMode.COMPASS
+                            } catch (e: SecurityException) {
+                                // Ignorar si falla por permisos en runtime no detectados
+                            }
+                        }
                         
-                        map.addMarker(MarkerOptions()
-                            .position(sjl)
-                            .title("AguaMap - SJL")
-                            .snippet("Punto de hidratación disponible"))
+                        // Centrar en SJL (o en el primer punto si existe)
+                        val center = if (waterPoints.isNotEmpty()) {
+                            LatLng(waterPoints.first().latitude, waterPoints.first().longitude)
+                        } else {
+                            LatLng(-11.9763, -77.0002)
+                        }
                         
                         // Zoom inicial centrado
-                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(sjl, 14.0))
+                        map.moveCamera(CameraUpdateFactory.newLatLngZoom(center, 13.0))
                     }
                     
                     // Asegurar que los gestos sigan activos

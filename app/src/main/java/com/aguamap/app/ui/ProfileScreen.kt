@@ -1,6 +1,5 @@
 package com.aguamap.app.ui
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,25 +9,32 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aguamap.app.ui.components.GlassCard
+import com.aguamap.app.data.local.UserPreferencesRepository
+import com.aguamap.app.domain.SJL_SECTORS
+import com.aguamap.app.domain.UserPreferences
+import kotlinx.coroutines.launch
 
 @Composable
-fun ProfileScreen() {
-    val bgLight = Color(0xFFF0F9FF)
+fun ProfileScreen(onBack: () -> Unit = {}) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val repository = remember { UserPreferencesRepository(context) }
+    val userPreferences by repository.userPreferencesFlow.collectAsState(initial = UserPreferences())
+
+    val colorScheme = MaterialTheme.colorScheme
     
-    Box(modifier = Modifier.fillMaxSize().background(bgLight)) {
+    Box(modifier = Modifier.fillMaxSize().background(colorScheme.background)) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -39,12 +45,39 @@ fun ProfileScreen() {
 
             // Profile Header Section
             item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Mi Perfil",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
                 ProfileHeader()
             }
 
             // Impact Section (Bento Style)
             item {
                 ImpactSection()
+            }
+
+            // Preferences Section
+            item {
+                PreferencesSection(
+                    preferences = userPreferences,
+                    onSectorChange = { scope.launch { repository.updateSector(it) } },
+                    onContrastChange = { scope.launch { repository.updateHighContrast(it) } },
+                    onRadiusChange = { scope.launch { repository.updateRadius(it) } },
+                    onAnonymousChange = { scope.launch { repository.updateAnonymous(it) } }
+                )
             }
 
             // Saved Points Section
@@ -64,8 +97,8 @@ fun ProfileScreen() {
 
 @Composable
 fun ProfileHeader() {
-    val darkBlue = Color(0xFF01579B)
-    val celeste = Color(0xFF03A9F4)
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
 
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -78,7 +111,7 @@ fun ProfileHeader() {
                     .clip(CircleShape)
                     .background(
                         Brush.linearGradient(
-                            colors = listOf(celeste, darkBlue)
+                            colors = listOf(secondary, primary)
                         )
                     )
                     .padding(3.dp)
@@ -86,25 +119,25 @@ fun ProfileHeader() {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     shape = CircleShape,
-                    color = Color.White
+                    color = MaterialTheme.colorScheme.surface
                 ) {
                     Icon(
                         Icons.Default.Person,
                         contentDescription = null,
-                        tint = celeste.copy(alpha = 0.5f),
+                        tint = secondary.copy(alpha = 0.5f),
                         modifier = Modifier.padding(20.dp)
                     )
                 }
             }
             Surface(
-                color = celeste,
+                color = secondary,
                 shape = RoundedCornerShape(8.dp),
                 modifier = Modifier.size(24.dp)
             ) {
                 Icon(
                     Icons.Default.Check,
                     contentDescription = "Verified",
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onSecondary,
                     modifier = Modifier.padding(4.dp)
                 )
             }
@@ -115,7 +148,7 @@ fun ProfileHeader() {
             "Mateo Fernández",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            color = darkBlue
+            color = primary
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -125,13 +158,13 @@ fun ProfileHeader() {
             Icon(
                 Icons.Default.MilitaryTech,
                 contentDescription = null,
-                tint = celeste,
+                tint = secondary,
                 modifier = Modifier.size(18.dp)
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 "Guardián del Agua",
-                color = celeste,
+                color = secondary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -141,13 +174,13 @@ fun ProfileHeader() {
 
 @Composable
 fun ImpactSection() {
-    val darkBlue = Color(0xFF01579B)
-    val celeste = Color(0xFF03A9F4)
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             "Tu Impacto",
-            color = darkBlue.copy(alpha = 0.6f),
+            color = primary.copy(alpha = 0.6f),
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium
         )
@@ -160,21 +193,21 @@ fun ImpactSection() {
                 icon = Icons.Default.WaterDrop,
                 value = "42L",
                 label = "Agua consumida",
-                accentColor = darkBlue
+                accentColor = primary
             )
             ImpactCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.Default.Recycling,
                 value = "84",
                 label = "Botellas evitadas",
-                accentColor = celeste
+                accentColor = secondary
             )
         }
         
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Row(
@@ -184,24 +217,24 @@ fun ImpactSection() {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(
-                        color = celeste.copy(alpha = 0.1f),
+                        color = secondary.copy(alpha = 0.1f),
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.size(48.dp)
                     ) {
                         Icon(
                             Icons.Default.AddLocationAlt,
                             contentDescription = null,
-                            tint = celeste,
+                            tint = secondary,
                             modifier = Modifier.padding(12.dp)
                         )
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
-                        Text("12", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = darkBlue)
-                        Text("Puntos reportados", fontSize = 14.sp, color = Color.Gray)
+                        Text("12", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = primary)
+                        Text("Puntos reportados", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                     }
                 }
-                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = Color.LightGray)
+                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
             }
         }
     }
@@ -218,7 +251,7 @@ fun ImpactCard(
     Card(
         modifier = modifier.aspectRatio(1f),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(
@@ -227,8 +260,8 @@ fun ImpactCard(
         ) {
             Icon(icon, contentDescription = null, tint = accentColor)
             Column {
-                Text(value, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Color(0xFF01579B))
-                Text(label, fontSize = 12.sp, color = Color.Gray)
+                Text(value, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                Text(label, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
             }
         }
     }
@@ -236,8 +269,8 @@ fun ImpactCard(
 
 @Composable
 fun SavedPointsSection() {
-    val darkBlue = Color(0xFF01579B)
-    val celeste = Color(0xFF03A9F4)
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Row(
@@ -247,13 +280,13 @@ fun SavedPointsSection() {
         ) {
             Text(
                 "Mis Puntos Guardados",
-                color = darkBlue.copy(alpha = 0.6f),
+                color = primary.copy(alpha = 0.6f),
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Medium
             )
             Text(
                 "Ver todos",
-                color = celeste,
+                color = secondary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -266,12 +299,13 @@ fun SavedPointsSection() {
 
 @Composable
 fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
-    val darkBlue = Color(0xFF01579B)
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
     
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(1.dp)
     ) {
         Row(
@@ -282,14 +316,14 @@ fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF03A9F4).copy(alpha = 0.1f)),
+                    .background(secondary.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Default.Water, contentDescription = null, tint = Color(0xFF03A9F4))
+                Icon(Icons.Default.Water, contentDescription = null, tint = secondary)
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = darkBlue, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(title, color = primary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
                         modifier = Modifier
@@ -298,20 +332,20 @@ fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
                             .background(statusColor)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(subtitle, color = Color.Gray, fontSize = 14.sp)
+                    Text(subtitle, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontSize = 14.sp)
                 }
             }
-            Icon(Icons.Default.Bookmark, contentDescription = null, tint = Color.LightGray)
+            Icon(Icons.Default.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
         }
     }
 }
 
 @Composable
 fun SettingsSection() {
-    val darkBlue = Color(0xFF01579B)
+    val primary = MaterialTheme.colorScheme.primary
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SettingsItem(Icons.Default.Settings, "Ajustes", darkBlue)
-        SettingsItem(Icons.Default.Shield, "Privacidad", darkBlue)
+        SettingsItem(Icons.Default.Settings, "Ajustes", primary)
+        SettingsItem(Icons.Default.Shield, "Privacidad", primary)
         Spacer(modifier = Modifier.height(8.dp))
         Row(
             modifier = Modifier
@@ -329,11 +363,150 @@ fun SettingsSection() {
 }
 
 @Composable
+fun PreferencesSection(
+    preferences: UserPreferences,
+    onSectorChange: (String) -> Unit,
+    onContrastChange: (Boolean) -> Unit,
+    onRadiusChange: (Float) -> Unit,
+    onAnonymousChange: (Boolean) -> Unit
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            "Preferencias de SJL",
+            color = primary.copy(alpha = 0.6f),
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Medium
+        )
+
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(2.dp)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                
+                // Sector Selector
+                Column {
+                    Text("Tu Sector", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = primary)
+                    Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                        OutlinedButton(
+                            onClick = { expanded = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = primary)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(preferences.selectedSector)
+                                Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = secondary)
+                            }
+                        }
+                        DropdownMenu(
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false },
+                            modifier = Modifier.fillMaxWidth(0.8f).background(MaterialTheme.colorScheme.surface)
+                        ) {
+                            SJL_SECTORS.forEach { sector ->
+                                DropdownMenuItem(
+                                    text = { Text(sector, color = MaterialTheme.colorScheme.onSurface) },
+                                    onClick = {
+                                        onSectorChange(sector)
+                                        expanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+
+                // Search Radius
+                Column {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Radio de búsqueda", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = primary)
+                        Text("${preferences.searchRadius.toInt()} km", fontSize = 14.sp, color = secondary, fontWeight = FontWeight.Bold)
+                    }
+                    Slider(
+                        value = preferences.searchRadius,
+                        onValueChange = onRadiusChange,
+                        valueRange = 1f..10f,
+                        steps = 9,
+                        colors = SliderDefaults.colors(
+                            thumbColor = secondary,
+                            activeTrackColor = secondary,
+                            inactiveTrackColor = secondary.copy(alpha = 0.2f)
+                        )
+                    )
+                }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+
+                // High Contrast Switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Modo Alto Contraste", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = primary)
+                        Text("Optimizar lectura bajo el sol", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                    Switch(
+                        checked = preferences.isHighContrast,
+                        onCheckedChange = onContrastChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.surface,
+                            checkedTrackColor = secondary,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.surface,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    )
+                }
+
+                // Anonymous Mode Switch
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text("Modo Anónimo", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = primary)
+                        Text("Ocultar tu nombre en reportes", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    }
+                    Switch(
+                        checked = preferences.isAnonymous,
+                        onCheckedChange = onAnonymousChange,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.surface,
+                            checkedTrackColor = secondary,
+                            uncheckedThumbColor = MaterialTheme.colorScheme.surface,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                        )
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun SettingsItem(icon: ImageVector, label: String, textColor: Color) {
     Card(
         modifier = Modifier.fillMaxWidth().clickable { },
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(1.dp)
     ) {
         Row(
@@ -342,11 +515,11 @@ fun SettingsItem(icon: ImageVector, label: String, textColor: Color) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, tint = Color.Gray)
+                Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(label, color = textColor, fontWeight = FontWeight.SemiBold)
             }
-            Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = Color.LightGray, modifier = Modifier.size(16.dp))
+            Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), modifier = Modifier.size(16.dp))
         }
     }
 }

@@ -18,16 +18,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.aguamap.app.R
+import coil.compose.AsyncImage
 import com.aguamap.app.domain.WaterPoint
 import com.aguamap.app.domain.WaterPointStatus
 import com.aguamap.app.domain.WaterPointType
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WaterPointCard(point: WaterPoint) {
+fun WaterPointCard(
+    point: WaterPoint,
+    onClick: () -> Unit = {}
+) {
     val darkBlue = Color(0xFF01579B)
     val celeste = Color(0xFF03A9F4)
 
     Card(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 4.dp),
@@ -48,19 +56,31 @@ fun WaterPointCard(point: WaterPoint) {
                 verticalAlignment = Alignment.Top
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Icon based on type
-                    Surface(
-                        modifier = Modifier.size(48.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        color = getIconBackgroundColor(point.type).copy(alpha = 0.1f)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = getIconForType(point.type),
-                                contentDescription = null,
-                                tint = getIconBackgroundColor(point.type),
-                                modifier = Modifier.size(24.dp)
-                            )
+                    // Image or Icon based on type
+                    if (point.imageUrl != null) {
+                        AsyncImage(
+                            model = point.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .background(Color.LightGray, RoundedCornerShape(12.dp))
+                                .padding(0.dp),
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        )
+                    } else {
+                        Surface(
+                            modifier = Modifier.size(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            color = getIconBackgroundColor(point.type).copy(alpha = 0.1f)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = getIconForType(point.type),
+                                    contentDescription = null,
+                                    tint = getIconBackgroundColor(point.type),
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
                         }
                     }
                     
@@ -92,7 +112,7 @@ fun WaterPointCard(point: WaterPoint) {
                     color = statusColor.copy(alpha = 0.1f)
                 ) {
                     Text(
-                        text = point.status.name,
+                        text = point.status.displayName,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         color = statusColor,
                         fontSize = 10.sp,

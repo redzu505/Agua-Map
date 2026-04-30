@@ -12,47 +12,55 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Primary,
-    primaryContainer = PrimaryContainer,
-    onPrimaryContainer = OnPrimaryContainer,
-    secondary = PurpleGrey80,
-    tertiary = Tertiary,
-    onTertiary = Background,
-    background = Background,
-    surface = Background,
-    onSurface = OnSurface,
-    onSurfaceVariant = OnSurfaceVariant
+    primary = SkyBlue,
+    secondary = OceanBlue,
+    tertiary = IceBlue,
+    background = DeepOcean,
+    surface = DeepOcean,
+    onPrimary = HighContrastWhite,
+    onSecondary = HighContrastWhite,
+    onBackground = IceBlue,
+    onSurface = IceBlue
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+    primary = OceanBlue,
+    secondary = SkyBlue,
+    tertiary = DeepOcean,
+    background = IceBlue,
+    surface = HighContrastWhite,
+    onPrimary = HighContrastWhite,
+    onSecondary = HighContrastWhite,
+    onBackground = OceanBlue,
+    onSurface = OceanBlue
+)
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+private val HighContrastColorScheme = lightColorScheme(
+    primary = HighContrastBlack,
+    onPrimary = HighContrastWhite,
+    primaryContainer = HighContrastYellow,
+    onPrimaryContainer = HighContrastBlack,
+    background = HighContrastWhite,
+    onBackground = HighContrastBlack,
+    surface = HighContrastWhite,
+    onSurface = HighContrastBlack,
+    secondary = HighContrastBlack,
+    onSecondary = HighContrastWhite
 )
 
 @Composable
 fun AguaMapTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
-    dynamicColor: Boolean = true,
+    highContrast: Boolean = false,
+    dynamicColor: Boolean = false, // Desactivado por defecto para mantener estética Ocean & Cloud
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
+        highContrast -> HighContrastColorScheme
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
         }
-
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
     }

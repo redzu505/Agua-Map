@@ -1,5 +1,9 @@
 package com.aguamap.app.ui
 
+import android.Manifest
+import android.location.Location
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,33 +22,85 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.res.stringResource
+import com.aguamap.app.R
 import com.aguamap.app.domain.WaterPoint
 import com.aguamap.app.domain.WaterPointStatus
 import com.aguamap.app.domain.WaterPointType
 import com.aguamap.app.ui.components.MapLibreView
 import com.aguamap.app.ui.components.WaterPointCard
 import com.aguamap.app.ui.theme.AguaMapTheme
+import com.aguamap.app.util.LocationService
+import com.aguamap.app.util.LocationUtils
+import androidx.compose.ui.platform.LocalContext
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(
+    onNavigateToProfile: () -> Unit,
+    onNavigateToCommunity: () -> Unit,
+    onNavigateToDetail: (String) -> Unit,
+    onNavigateToAddPoint: () -> Unit
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val locationService = remember { LocationService(context) }
+    var userLocation by remember { mutableStateOf<Location?>(null) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        if (permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+            permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        ) {
+            scope.launch {
+                userLocation = locationService.getCurrentLocation(context)
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (LocationUtils.hasLocationPermissions(context)) {
+            userLocation = locationService.getCurrentLocation(context)
+        } else {
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
     var searchQuery by remember { mutableStateOf("") }
     val filters = listOf("Todos", "Fuentes", "Pozos", "Filtrada", "Grifo")
     var selectedFilter by remember { mutableStateOf("Todos") }
     var selectedTab by remember { mutableStateOf("Points") }
 
-    // Paleta Acuática
-    val bgLight = Color(0xFFF0F9FF)
-    val oceanBlue = Color(0xFF01579B)
-    val celeste = Color(0xFF03A9F4)
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+    val background = MaterialTheme.colorScheme.background
 
-    // Mock data adaptada a SJL
-    val waterPoints = listOf(
-        WaterPoint("1", "Fuente Los Postes", "Paradero Los Postes, SJL", 4.8, "50m", "24h", WaterPointStatus.OPERATIVO, WaterPointType.FUENTE),
-        WaterPoint("2", "Punto Eco-Filter Zárate", "Av. Gran Chimú 452", 4.5, "800m", "08:00 - 22:00", WaterPointStatus.OPERATIVO, WaterPointType.FILTRADA),
-        WaterPoint("3", "Pozo Huiracocha", "Parque Zonal Huiracocha", 4.2, "1.2km", "Cerrado", WaterPointStatus.MANTENIMIENTO, WaterPointType.POZO),
-        WaterPoint("4", "Grifo Caja de Agua", "Estación Caja de Agua", 4.9, "1.5km", "24h", WaterPointStatus.OPERATIVO, WaterPointType.GRIFO)
+    // Mock data adaptada a SJL con coordenadas reales aproximadas
+    val rawWaterPoints = listOf(
+        WaterPoint("1", "Fuente Los Postes", "Paradero Los Postes, SJL", 4.8, "---", "24h", WaterPointStatus.OPERATIVO, WaterPointType.FUENTE, -11.9904, -77.0006),
+        WaterPoint("2", "Punto Eco-Filter Zárate", "Av. Gran Chimú 452", 4.5, "---", "08:00 - 22:00", WaterPointStatus.OPERATIVO, WaterPointType.FILTRADA, -12.0225, -77.0012),
+        WaterPoint("3", "Pozo Huiracocha", "Parque Zonal Huiracocha", 4.2, "---", "Cerrado", WaterPointStatus.MANTENIMIENTO, WaterPointType.POZO, -11.9961, -76.9958),
+        WaterPoint("4", "Grifo Caja de Agua", "Estación Caja de Agua", 4.9, "---", "24h", WaterPointStatus.OPERATIVO, WaterPointType.GRIFO, -12.0272, -77.0142)
     )
+
+    val waterPoints = remember(userLocation) {
+        rawWaterPoints.map { point ->
+            val distance = userLocation?.let { loc ->
+                LocationUtils.calculateDistance(
+                    loc.latitude, loc.longitude,
+                    point.latitude, point.longitude
+                )
+            }
+            point.copy(distance = distance?.let { LocationUtils.formatDistance(it) } ?: "---")
+        }.sortedBy { it.distance }
+    }
 
     Scaffold(
         topBar = {
@@ -55,7 +111,7 @@ fun HomeScreen() {
                             Icon(
                                 Icons.Default.WaterDrop,
                                 contentDescription = null,
-                                tint = celeste,
+                                tint = secondary,
                                 modifier = Modifier.size(24.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
@@ -63,68 +119,68 @@ fun HomeScreen() {
                                 "AguaMap",
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 24.sp,
-                                color = oceanBlue
+                                color = primary
                             )
                         }
                     },
                     actions = {
                         IconButton(onClick = { /* Filter action */ }) {
-                            Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = oceanBlue)
+                            Icon(Icons.Default.FilterList, contentDescription = "Filter", tint = primary)
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = bgLight.copy(alpha = 0.95f)
+                        containerColor = background.copy(alpha = 0.95f)
                     )
                 )
             }
         },
         bottomBar = {
             NavigationBar(
-                containerColor = Color.White,
+                containerColor = MaterialTheme.colorScheme.surface,
                 tonalElevation = 8.dp
             ) {
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Map, contentDescription = "Map") },
-                    label = { Text("Mapa") },
+                    label = { Text(stringResource(R.string.nav_map)) },
                     selected = selectedTab == "Map",
                     onClick = { selectedTab = "Map" },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = oceanBlue,
-                        unselectedIconColor = Color.Gray,
-                        indicatorColor = celeste.copy(alpha = 0.2f)
+                        selectedIconColor = primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        indicatorColor = secondary.copy(alpha = 0.15f)
                     )
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.WaterDrop, contentDescription = "Points") },
-                    label = { Text("Puntos") },
+                    label = { Text(stringResource(R.string.nav_points)) },
                     selected = selectedTab == "Points",
                     onClick = { selectedTab = "Points" },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = oceanBlue,
-                        unselectedIconColor = Color.Gray,
-                        indicatorColor = celeste.copy(alpha = 0.2f)
+                        selectedIconColor = primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        indicatorColor = secondary.copy(alpha = 0.15f)
                     )
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Group, contentDescription = "Community") },
-                    label = { Text("Comunidad") },
+                    label = { Text(stringResource(R.string.nav_community)) },
                     selected = selectedTab == "Community",
                     onClick = { selectedTab = "Community" },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = oceanBlue,
-                        unselectedIconColor = Color.Gray,
-                        indicatorColor = celeste.copy(alpha = 0.2f)
+                        selectedIconColor = primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        indicatorColor = secondary.copy(alpha = 0.15f)
                     )
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
-                    label = { Text("Perfil") },
+                    label = { Text(stringResource(R.string.nav_profile)) },
                     selected = selectedTab == "Profile",
                     onClick = { selectedTab = "Profile" },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = oceanBlue,
-                        unselectedIconColor = Color.Gray,
-                        indicatorColor = celeste.copy(alpha = 0.2f)
+                        selectedIconColor = primary,
+                        unselectedIconColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
+                        indicatorColor = secondary.copy(alpha = 0.15f)
                     )
                 )
             }
@@ -132,21 +188,25 @@ fun HomeScreen() {
         floatingActionButton = {
             if (selectedTab == "Points" || selectedTab == "Map") {
                 FloatingActionButton(
-                    onClick = { /* Add point */ },
-                    containerColor = celeste,
-                    contentColor = Color.White,
+                    onClick = onNavigateToAddPoint,
+                    containerColor = secondary,
+                    contentColor = MaterialTheme.colorScheme.onSecondary,
                     shape = CircleShape
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Add")
                 }
             }
         },
-        containerColor = bgLight
+        containerColor = background
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
             when (selectedTab) {
                 "Map" -> {
-                    MapLibreView(modifier = Modifier.fillMaxSize())
+                    MapLibreView(
+                        modifier = Modifier.fillMaxSize(),
+                        waterPoints = waterPoints,
+                        onMarkerClick = onNavigateToDetail
+                    )
                 }
                 "Points" -> {
                     Column(
@@ -160,17 +220,17 @@ fun HomeScreen() {
                         OutlinedTextField(
                             value = searchQuery,
                             onValueChange = { searchQuery = it },
-                            placeholder = { Text("Buscar puntos en SJL...", color = Color.Gray) },
-                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = oceanBlue) },
+                            placeholder = { Text(stringResource(R.string.search_placeholder), color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)) },
+                            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = primary) },
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White,
-                                unfocusedContainerColor = Color.White,
-                                focusedBorderColor = celeste,
+                                focusedContainerColor = MaterialTheme.colorScheme.surface,
+                                unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                                focusedBorderColor = secondary,
                                 unfocusedBorderColor = Color.Transparent,
-                                focusedTextColor = oceanBlue,
-                                unfocusedTextColor = oceanBlue
+                                focusedTextColor = primary,
+                                unfocusedTextColor = primary
                             )
                         )
 
@@ -188,10 +248,10 @@ fun HomeScreen() {
                                     onClick = { selectedFilter = filter },
                                     label = { Text(filter) },
                                     colors = FilterChipDefaults.filterChipColors(
-                                        containerColor = Color.White,
-                                        labelColor = Color.Gray,
-                                        selectedContainerColor = celeste,
-                                        selectedLabelColor = Color.White
+                                        containerColor = MaterialTheme.colorScheme.surface,
+                                        labelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                                        selectedContainerColor = secondary,
+                                        selectedLabelColor = MaterialTheme.colorScheme.onSecondary
                                     ),
                                     border = null,
                                     shape = RoundedCornerShape(20.dp)
@@ -207,21 +267,24 @@ fun HomeScreen() {
                             modifier = Modifier.fillMaxSize()
                         ) {
                             items(waterPoints) { point ->
-                                WaterPointCard(point)
+                                WaterPointCard(
+                                    point = point,
+                                    onClick = { onNavigateToDetail(point.id) }
+                                )
                             }
                             item { Spacer(modifier = Modifier.height(80.dp)) }
                         }
                     }
                 }
                 "Community" -> {
-                    CommunityScreen()
+                    CommunityScreen(onBack = { selectedTab = "Points" })
                 }
                 "Profile" -> {
-                    ProfileScreen()
+                    ProfileScreen(onBack = { selectedTab = "Points" })
                 }
                 else -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("Próximamente", color = oceanBlue)
+                        Text("Próximamente", color = primary)
                     }
                 }
             }
@@ -233,6 +296,11 @@ fun HomeScreen() {
 @Composable
 fun HomeScreenPreview() {
     AguaMapTheme {
-        HomeScreen()
+        HomeScreen(
+            onNavigateToProfile = {},
+            onNavigateToCommunity = {},
+            onNavigateToDetail = {},
+            onNavigateToAddPoint = {}
+        )
     }
 }

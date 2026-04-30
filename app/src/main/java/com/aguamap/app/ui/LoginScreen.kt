@@ -32,16 +32,13 @@ enum class AuthState {
 }
 
 @Composable
-fun LoginScreen() {
+fun LoginScreen(onLoginSuccess: () -> Unit) {
     var currentState by remember { mutableStateOf(AuthState.START) }
     
-    // Paleta Acuática (Clara)
-    val bgLight = Color(0xFFF0F9FF)
-
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(bgLight)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         AnimatedContent(
             targetState = currentState,
@@ -50,17 +47,17 @@ fun LoginScreen() {
             when (state) {
                 AuthState.START -> StartView(
                     onLoginClick = { currentState = AuthState.LOGIN },
-                    onGuestClick = { currentState = AuthState.HOME }
+                    onGuestClick = { onLoginSuccess() }
                 )
                 AuthState.LOGIN -> LoginView(
                     onBack = { currentState = AuthState.START },
                     onRegisterClick = { currentState = AuthState.REGISTER },
-                    onLoginSuccess = { currentState = AuthState.HOME }
+                    onLoginSuccess = { onLoginSuccess() }
                 )
                 AuthState.REGISTER -> RegisterView(
                     onBack = { currentState = AuthState.LOGIN }
                 )
-                AuthState.HOME -> HomeScreen()
+                AuthState.HOME -> { /* Ya no navegamos internamente a Home */ }
             }
         }
     }
@@ -68,8 +65,8 @@ fun LoginScreen() {
 
 @Composable
 fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
-    val oceanBlue = Color(0xFF01579B)
-    val celeste = Color(0xFF03A9F4)
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
 
     Column(
         modifier = Modifier
@@ -86,7 +83,7 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
             Surface(
                 modifier = Modifier.size(120.dp),
                 shape = CircleShape,
-                color = Color.White,
+                color = MaterialTheme.colorScheme.surface,
                 shadowElevation = 8.dp
             ) {
                 Box(contentAlignment = Alignment.Center) {
@@ -94,7 +91,7 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
                         Icons.Default.WaterDrop,
                         contentDescription = null,
                         modifier = Modifier.size(64.dp),
-                        tint = celeste
+                        tint = secondary
                     )
                 }
             }
@@ -103,12 +100,12 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
                 "AguaMap",
                 fontSize = 48.sp,
                 fontWeight = FontWeight.ExtraBold,
-                color = oceanBlue
+                color = primary
             )
             Text(
                 "San Juan de Lurigancho",
                 fontSize = 16.sp,
-                color = oceanBlue.copy(alpha = 0.6f),
+                color = primary.copy(alpha = 0.6f),
                 letterSpacing = 2.sp,
                 fontWeight = FontWeight.Medium
             )
@@ -119,7 +116,7 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
             Text(
                 "¡Bienvenido a AguaMap!",
                 style = MaterialTheme.typography.headlineMedium,
-                color = oceanBlue,
+                color = primary,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
             )
@@ -127,7 +124,7 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
             Text(
                 "Tu guía para encontrar fuentes de agua confiables en SJL. Únete a la comunidad de Guardianes del Agua.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = oceanBlue.copy(alpha = 0.7f),
+                color = primary.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center
             )
         }
@@ -142,14 +139,14 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
                 onClick = onLoginClick,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
                 shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = celeste)
+                colors = ButtonDefaults.buttonColors(containerColor = secondary)
             ) {
                 Text("Comenzar", fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
 
             Text(
                 "Continuar como invitado",
-                color = oceanBlue,
+                color = primary,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable { onGuestClick() },
                 textDecoration = TextDecoration.Underline
@@ -164,8 +161,8 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
 fun LoginView(onBack: () -> Unit, onRegisterClick: () -> Unit, onLoginSuccess: () -> Unit) {
     var userId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    val oceanBlue = Color(0xFF01579B)
-    val celeste = Color(0xFF03A9F4)
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
@@ -184,7 +181,7 @@ fun LoginView(onBack: () -> Unit, onRegisterClick: () -> Unit, onLoginSuccess: (
             "¿Olvidaste tu contraseña?",
             modifier = Modifier.fillMaxWidth(),
             textAlign = TextAlign.End,
-            color = celeste,
+            color = secondary,
             fontSize = 14.sp,
             fontWeight = FontWeight.Medium
         )
@@ -195,7 +192,7 @@ fun LoginView(onBack: () -> Unit, onRegisterClick: () -> Unit, onLoginSuccess: (
             onClick = { onLoginSuccess() },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = oceanBlue)
+            colors = ButtonDefaults.buttonColors(containerColor = primary)
         ) {
             Text("Ingresar", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
@@ -203,10 +200,10 @@ fun LoginView(onBack: () -> Unit, onRegisterClick: () -> Unit, onLoginSuccess: (
         Spacer(modifier = Modifier.height(32.dp))
 
         Row {
-            Text("¿Nuevo en SJL? ", color = oceanBlue.copy(alpha = 0.7f))
+            Text("¿Nuevo en SJL? ", color = primary.copy(alpha = 0.7f))
             Text(
                 "Crea una cuenta",
-                color = celeste,
+                color = secondary,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.clickable { onRegisterClick() }
             )
@@ -222,8 +219,8 @@ fun RegisterView(onBack: () -> Unit) {
     var telefono by remember { mutableStateOf("") }
     var userId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    val oceanBlue = Color(0xFF01579B)
-    val celeste = Color(0xFF03A9F4)
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
@@ -246,7 +243,7 @@ fun RegisterView(onBack: () -> Unit) {
             onClick = { /* Lógica de Registro */ },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = celeste)
+            colors = ButtonDefaults.buttonColors(containerColor = secondary)
         ) {
             Text("Registrarse", fontSize = 18.sp, fontWeight = FontWeight.Bold)
         }
@@ -257,15 +254,15 @@ fun RegisterView(onBack: () -> Unit) {
 
 @Composable
 fun HeaderSection(title: String, onBack: () -> Unit) {
-    val oceanBlue = Color(0xFF01579B)
+    val primary = MaterialTheme.colorScheme.primary
     Row(
         modifier = Modifier.fillMaxWidth().padding(top = 20.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBack) {
-            Icon(Icons.Default.ArrowBack, contentDescription = null, tint = oceanBlue)
+            Icon(Icons.Default.ArrowBack, contentDescription = null, tint = primary)
         }
-        Text(title, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = oceanBlue)
+        Text(title, fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = primary)
     }
 }
 
@@ -277,26 +274,26 @@ fun AuthTextField(
     icon: ImageVector,
     isPassword: Boolean = false
 ) {
-    val oceanBlue = Color(0xFF01579B)
-    val celeste = Color(0xFF03A9F4)
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
 
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
-        leadingIcon = { Icon(icon, contentDescription = null, tint = celeste) },
+        leadingIcon = { Icon(icon, contentDescription = null, tint = secondary) },
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
         visualTransformation = if (isPassword) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            focusedTextColor = oceanBlue,
-            unfocusedTextColor = oceanBlue,
-            focusedBorderColor = celeste,
-            unfocusedBorderColor = Color.Transparent,
-            focusedLabelColor = celeste,
-            unfocusedLabelColor = oceanBlue.copy(alpha = 0.5f)
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            focusedTextColor = primary,
+            unfocusedTextColor = primary,
+            focusedBorderColor = secondary,
+            unfocusedBorderColor = primary.copy(alpha = 0.1f),
+            focusedLabelColor = secondary,
+            unfocusedLabelColor = primary.copy(alpha = 0.5f)
         )
     )
 }
@@ -305,6 +302,6 @@ fun AuthTextField(
 @Composable
 fun LoginScreenPreview() {
     AguaMapTheme {
-        LoginScreen()
+        LoginScreen(onLoginSuccess = {})
     }
 }

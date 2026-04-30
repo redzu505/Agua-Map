@@ -1,3 +1,24 @@
 <resources>
     <string name="app_name">AguaMap</string>
+    <string name="nav_map">Mapa</string>
+    <string name="nav_points">Puntos</string>
+    <string name="nav_community">Comunidad</string>
+    <string name="nav_profile">Perfil</string>
+    <string name="search_placeholder">Buscar puntos en SJL…</string>
+    <string name="add_point_title">Agregar Punto de Agua</string>
+    <string name="location_gps_captured">Ubicación GPS capturada</string>
+    <string name="error_point_not_found">Punto no encontrado</string>
+    <string name="btn_register">Registrar Punto</string>
+    <string name="status_operating">Operativo</string>
+    <string name="status_maintenance">En Mantenimiento</string>
+    <string name="detail_title">Detalles del Punto</string>
+    <string name="label_rating">Calificación</string>
+    <string name="label_hours">Horario</string>
+    <string name="label_distance">Distancia</string>
+    <string name="label_type">Tipo</string>
+    <string name="label_exact_location">Ubicación exacta</string>
+    <string name="label_latitude">Latitud</string>
+    <string name="label_longitude">Longitud</string>
+    <string name="btn_report_problem">Reportar Problema</string>
+    <string name="back">Regresar</string>
 </resources>

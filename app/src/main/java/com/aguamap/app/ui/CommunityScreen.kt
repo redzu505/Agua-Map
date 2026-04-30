@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -22,14 +23,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun CommunityScreen() {
-    // Nueva Paleta Acuática (Clara)
-    val bgLight = Color(0xFFF0F9FF)     // Azul muy claro (Agua)
-    val primaryBlue = Color(0xFF03A9F4) // Celeste Brillante
-    val darkBlue = Color(0xFF01579B)    // Azul Océano Profundo
-    val cardBg = Color.White
+fun CommunityScreen(onBack: () -> Unit = {}) {
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+    val background = MaterialTheme.colorScheme.background
+    val surface = MaterialTheme.colorScheme.surface
 
-    Box(modifier = Modifier.fillMaxSize().background(bgLight)) {
+    Box(modifier = Modifier.fillMaxSize().background(background)) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -38,19 +38,24 @@ fun CommunityScreen() {
         ) {
             item { Spacer(modifier = Modifier.height(10.dp)) }
 
-            // Header con colores claros y frescos
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        "Comunidad SJL",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = darkBlue
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = primary)
+                        }
+                        Text(
+                            "Comunidad SJL",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = primary
+                        )
+                    }
                     Text(
                         "Información en tiempo real sobre el agua en tu zona.",
+                        modifier = Modifier.padding(start = 48.dp),
                         fontSize = 14.sp,
-                        color = darkBlue.copy(alpha = 0.6f)
+                        color = primary.copy(alpha = 0.6f)
                     )
                 }
             }
@@ -67,10 +72,10 @@ fun CommunityScreen() {
                             "REPORTES RECIENTES",
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            color = primaryBlue,
+                            color = secondary,
                             letterSpacing = 1.sp
                         )
-                        Text("Ver todo", fontSize = 12.sp, color = darkBlue, fontWeight = FontWeight.Bold)
+                        Text("Ver todo", fontSize = 12.sp, color = primary, fontWeight = FontWeight.Bold)
                     }
                     
                     LazyRow(
@@ -85,7 +90,7 @@ fun CommunityScreen() {
                                 location = "Estación Metro",
                                 icon = Icons.Default.CheckCircle,
                                 iconColor = Color(0xFF4CAF50),
-                                textColor = darkBlue
+                                textColor = primary
                             )
                         }
                         item {
@@ -96,7 +101,7 @@ fun CommunityScreen() {
                                 location = "Zona 3",
                                 icon = Icons.Default.Warning,
                                 iconColor = Color(0xFFFFA000),
-                                textColor = darkBlue
+                                textColor = primary
                             )
                         }
                     }
@@ -108,32 +113,32 @@ fun CommunityScreen() {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = cardBg),
+                    colors = CardDefaults.cardColors(containerColor = surface),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
                     Box(modifier = Modifier.background(
                         Brush.horizontalGradient(
-                            listOf(primaryBlue.copy(alpha = 0.2f), Color.White)
+                            listOf(secondary.copy(alpha = 0.2f), surface)
                         )
                     ).padding(20.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.TipsAndUpdates, contentDescription = null, tint = primaryBlue, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.TipsAndUpdates, contentDescription = null, tint = secondary, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("TIP DEL DÍA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = primaryBlue)
+                                    Text("TIP DEL DÍA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = secondary)
                                 }
-                                Text("Duchas de 5 minutos", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = darkBlue)
+                                Text("Duchas de 5 minutos", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = primary)
                                 Text(
                                     "Ahorra hasta 40 litros de agua por sesión. ¡Cuidemos SJL!",
                                     fontSize = 12.sp,
-                                    color = darkBlue.copy(alpha = 0.7f)
+                                    color = primary.copy(alpha = 0.7f)
                                 )
                             }
                             Icon(
                                 Icons.Default.WaterDrop,
                                 contentDescription = null,
-                                tint = primaryBlue.copy(alpha = 0.3f),
+                                tint = secondary.copy(alpha = 0.3f),
                                 modifier = Modifier.size(60.dp)
                             )
                         }
@@ -147,8 +152,8 @@ fun CommunityScreen() {
                     title = "Nueva red de fuentes en Zárate",
                     description = "Se han instalado 15 nuevas fuentes de agua potable cerca a la Av. Gran Chimú.",
                     date = "2026-03-28",
-                    accentColor = primaryBlue,
-                    textColor = darkBlue
+                    accentColor = secondary,
+                    textColor = primary
                 )
             }
 
@@ -160,8 +165,8 @@ fun CommunityScreen() {
                     content = "La fuente en la Estación Caja de Agua tiene una pequeña fuga. ¡Tomen precauciones!",
                     likes = 24,
                     comments = 5,
-                    accentColor = primaryBlue,
-                    textColor = darkBlue
+                    accentColor = secondary,
+                    textColor = primary
                 )
             }
 
@@ -170,8 +175,8 @@ fun CommunityScreen() {
                     title = "Mantenimiento Programado",
                     description = "Sedapal realizará limpieza de reservorios en Campoy este fin de semana.",
                     date = "2026-04-02",
-                    accentColor = primaryBlue,
-                    textColor = darkBlue
+                    accentColor = secondary,
+                    textColor = primary
                 )
             }
 
