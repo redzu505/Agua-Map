@@ -21,4 +21,15 @@
     <string name="label_longitude">Longitud</string>
     <string name="btn_report_problem">Reportar Problema</string>
     <string name="back">Regresar</string>
+    <string name="label_comments">Comentarios</string>
+    <string name="label_no_comments">No hay comentarios aún.</string>
+    <string name="label_share_experience">Comparte tu experiencia con este punto de agua...</string>
+    <string name="btn_publish">Publicar</string>
+    <string name="report_dialog_title">Reportar Problema</string>
+    <string name="report_dialog_subtitle">Reportando problema en: %s</string>
+    <string name="report_label_type">Tipo de problema</string>
+    <string name="report_label_description">Descripción del problema</string>
+    <string name="report_hint_description">Describe el problema que encontraste...</string>
+    <string name="btn_cancel">Cancelar</string>
+    <string name="btn_send_report">Enviar Reporte</string>
 </resources>

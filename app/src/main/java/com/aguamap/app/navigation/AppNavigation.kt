@@ -12,9 +12,10 @@ import com.aguamap.app.ui.HomeScreen
 import com.aguamap.app.ui.LoginScreen
 import com.aguamap.app.ui.ProfileScreen
 import com.aguamap.app.ui.WaterPointDetailScreen
+import com.aguamap.app.viewmodel.HomeViewModel
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(homeViewModel: HomeViewModel) {
     val navController = rememberNavController()
 
     NavHost(
@@ -31,6 +32,7 @@ fun AppNavigation() {
         
         composable(Screen.Home.route) {
             HomeScreen(
+                homeViewModel = homeViewModel,
                 onNavigateToProfile = { navController.navigate("profile") },
                 onNavigateToCommunity = { navController.navigate("community") },
                 onNavigateToDetail = { pointId ->
@@ -47,7 +49,7 @@ fun AppNavigation() {
         }
 
         composable("community") {
-            CommunityScreen(onBack = { navController.popBackStack() })
+            CommunityScreen(homeViewModel = homeViewModel, onBack = { navController.popBackStack() })
         }
 
         composable(
@@ -55,7 +57,11 @@ fun AppNavigation() {
             arguments = listOf(navArgument("pointId") { type = NavType.StringType })
         ) { backStackEntry ->
             val pointId = backStackEntry.arguments?.getString("pointId") ?: ""
-            WaterPointDetailScreen(pointId = pointId, onBack = { navController.popBackStack() })
+            WaterPointDetailScreen(
+                pointId = pointId,
+                homeViewModel = homeViewModel,
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(Screen.AddWaterPoint.route) {

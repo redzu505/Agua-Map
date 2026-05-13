@@ -226,7 +226,7 @@ fun RegisterView(onBack: () -> Unit) {
         modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        HeaderSection(title = "Registro de Guardián", onBack = onBack)
+        HeaderSection(title = "Registro", onBack = onBack)
 
         Spacer(modifier = Modifier.height(24.dp))
 

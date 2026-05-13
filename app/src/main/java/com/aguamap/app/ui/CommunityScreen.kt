@@ -12,6 +12,9 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,9 +24,20 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.lazy.items
+import com.aguamap.app.viewmodel.HomeViewModel
 
 @Composable
-fun CommunityScreen(onBack: () -> Unit = {}) {
+fun CommunityScreen(
+    homeViewModel: HomeViewModel,
+    onBack: () -> Unit = {}
+) {
+    val news by homeViewModel.news.collectAsState()
+
+    LaunchedEffect(Unit) {
+        homeViewModel.loadCommunityData()
+    }
+
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
     val background = MaterialTheme.colorScheme.background
@@ -146,18 +160,17 @@ fun CommunityScreen(onBack: () -> Unit = {}) {
                 }
             }
 
-            // Noticias de Infraestructura (Estilo Blanco Limpio)
-            item {
+            // Noticias de Infraestructura (Dinámicas)
+            items(news) { item ->
                 LightNewsCard(
-                    title = "Nueva red de fuentes en Zárate",
-                    description = "Se han instalado 15 nuevas fuentes de agua potable cerca a la Av. Gran Chimú.",
-                    date = "2026-03-28",
+                    title = item.title,
+                    description = item.content,
+                    date = item.date,
                     accentColor = secondary,
                     textColor = primary
                 )
             }
 
-            // Actividad de Usuarios (Feed Claro)
             item {
                 LightActivityCard(
                     user = "Lucía Rodríguez",
@@ -169,7 +182,7 @@ fun CommunityScreen(onBack: () -> Unit = {}) {
                     textColor = primary
                 )
             }
-
+/* 
             item {
                 LightNewsCard(
                     title = "Mantenimiento Programado",
@@ -178,7 +191,7 @@ fun CommunityScreen(onBack: () -> Unit = {}) {
                     accentColor = secondary,
                     textColor = primary
                 )
-            }
+            } */
 
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }

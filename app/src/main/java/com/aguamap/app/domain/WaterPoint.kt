@@ -29,3 +29,33 @@ enum class WaterPointType(val displayName: String) {
     FILTRADA("Agua Filtrada"), 
     GRIFO("Grifo Público")
 }
+
+data class Comment(
+    val id: String,
+    val author: String,
+    val content: String,
+    val rating: Int,
+    val date: String
+)
+
+data class WaterPointReport(
+    val id: String,
+    val pointId: String,
+    val type: ReportType,
+    val description: String,
+    val date: String
+)
+
+enum class ReportType(val displayName: String) {
+    AVERIA("No funciona / Averiado"),
+    SUCIO("Sucio o en mal estado"),
+    CERRADO("Cerrado temporalmente"),
+    OTRO("Otro problema")
+}
+
+data class CommunityNews(
+    val id: Int = 0,
+    val title: String,
+    val content: String,
+    val date: String
+)

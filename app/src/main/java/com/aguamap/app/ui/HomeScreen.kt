@@ -32,12 +32,14 @@ import com.aguamap.app.ui.components.WaterPointCard
 import com.aguamap.app.ui.theme.AguaMapTheme
 import com.aguamap.app.util.LocationService
 import com.aguamap.app.util.LocationUtils
+import com.aguamap.app.viewmodel.HomeViewModel
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
+    homeViewModel: HomeViewModel,
     onNavigateToProfile: () -> Unit,
     onNavigateToCommunity: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
@@ -60,7 +62,11 @@ fun HomeScreen(
         }
     }
 
+    val waterPointsState by homeViewModel.waterPoints.collectAsState()
+    val isLoading by homeViewModel.isLoading.collectAsState()
+
     LaunchedEffect(Unit) {
+        homeViewModel.loadWaterPoints()
         if (LocationUtils.hasLocationPermissions(context)) {
             userLocation = locationService.getCurrentLocation(context)
         } else {
@@ -82,16 +88,8 @@ fun HomeScreen(
     val secondary = MaterialTheme.colorScheme.secondary
     val background = MaterialTheme.colorScheme.background
 
-    // Mock data adaptada a SJL con coordenadas reales aproximadas
-    val rawWaterPoints = listOf(
-        WaterPoint("1", "Fuente Los Postes", "Paradero Los Postes, SJL", 4.8, "---", "24h", WaterPointStatus.OPERATIVO, WaterPointType.FUENTE, -11.9904, -77.0006),
-        WaterPoint("2", "Punto Eco-Filter Zárate", "Av. Gran Chimú 452", 4.5, "---", "08:00 - 22:00", WaterPointStatus.OPERATIVO, WaterPointType.FILTRADA, -12.0225, -77.0012),
-        WaterPoint("3", "Pozo Huiracocha", "Parque Zonal Huiracocha", 4.2, "---", "Cerrado", WaterPointStatus.MANTENIMIENTO, WaterPointType.POZO, -11.9961, -76.9958),
-        WaterPoint("4", "Grifo Caja de Agua", "Estación Caja de Agua", 4.9, "---", "24h", WaterPointStatus.OPERATIVO, WaterPointType.GRIFO, -12.0272, -77.0142)
-    )
-
-    val waterPoints = remember(userLocation) {
-        rawWaterPoints.map { point ->
+    val waterPoints = remember(userLocation, waterPointsState) {
+        waterPointsState.map { point ->
             val distance = userLocation?.let { loc ->
                 LocationUtils.calculateDistance(
                     loc.latitude, loc.longitude,
@@ -261,6 +259,11 @@ fun HomeScreen(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
+                        if (isLoading) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = secondary)
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
                         // Water Points List
                         LazyColumn(
                             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -277,7 +280,7 @@ fun HomeScreen(
                     }
                 }
                 "Community" -> {
-                    CommunityScreen(onBack = { selectedTab = "Points" })
+                    CommunityScreen(homeViewModel = homeViewModel, onBack = { selectedTab = "Points" })
                 }
                 "Profile" -> {
                     ProfileScreen(onBack = { selectedTab = "Points" })
@@ -295,12 +298,7 @@ fun HomeScreen(
 @Preview(showSystemUi = true)
 @Composable
 fun HomeScreenPreview() {
-    AguaMapTheme {
-        HomeScreen(
-            onNavigateToProfile = {},
-            onNavigateToCommunity = {},
-            onNavigateToDetail = {},
-            onNavigateToAddPoint = {}
-        )
-    }
+    // Para el preview, necesitaríamos un mock de ViewModel o Repository
+    // Por simplicidad, dejamos el preview deshabilitado o mostramos un placeholder
+    Text("Preview de HomeScreen")
 }

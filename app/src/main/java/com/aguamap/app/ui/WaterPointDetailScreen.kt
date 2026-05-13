@@ -1,60 +1,67 @@
 package com.aguamap.app.ui
 
-import androidx.compose.foundation.background
+import android.location.Location
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.aguamap.app.R
+import com.aguamap.app.domain.Comment
+import com.aguamap.app.domain.ReportType
 import com.aguamap.app.domain.WaterPoint
+import com.aguamap.app.domain.WaterPointReport
 import com.aguamap.app.domain.WaterPointStatus
 import com.aguamap.app.domain.WaterPointType
-import com.aguamap.app.util.LocationUtils
-import androidx.compose.runtime.*
-import androidx.compose.ui.platform.LocalContext
-import android.location.Location
 import com.aguamap.app.util.LocationService
-import coil.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
-import com.aguamap.app.R
+import com.aguamap.app.util.LocationUtils
+import com.aguamap.app.viewmodel.HomeViewModel
 import java.util.Locale
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WaterPointDetailScreen(
     pointId: String,
+    homeViewModel: HomeViewModel,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
     val locationService = remember { LocationService(context) }
     var userLocation by remember { mutableStateOf<Location?>(null) }
+    
+    val comments by homeViewModel.comments.collectAsState()
+    val reports by homeViewModel.reports.collectAsState()
+    val waterPointsState by homeViewModel.waterPoints.collectAsState()
+    
+    var showReportDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(pointId) {
+        homeViewModel.loadDetails(pointId)
         if (LocationUtils.hasLocationPermissions(context)) {
             userLocation = locationService.getCurrentLocation(context)
         }
     }
 
-    // Mock data lookup - en una app real esto vendría de un ViewModel/Repository
-    val rawWaterPoints = listOf(
-        WaterPoint("1", "Fuente Los Postes", "Paradero Los Postes, SJL", 4.8, "---", "24h", WaterPointStatus.OPERATIVO, WaterPointType.FUENTE, -11.9904, -77.0006),
-        WaterPoint("2", "Punto Eco-Filter Zárate", "Av. Gran Chimú 452", 4.5, "---", "08:00 - 22:00", WaterPointStatus.OPERATIVO, WaterPointType.FILTRADA, -12.0225, -77.0012),
-        WaterPoint("3", "Pozo Huiracocha", "Parque Zonal Huiracocha", 4.2, "---", "Cerrado", WaterPointStatus.MANTENIMIENTO, WaterPointType.POZO, -11.9961, -76.9958),
-        WaterPoint("4", "Grifo Caja de Agua", "Estación Caja de Agua", 4.9, "---", "24h", WaterPointStatus.OPERATIVO, WaterPointType.GRIFO, -12.0272, -77.0142)
-    )
-    
-    val point = remember(userLocation) {
-        rawWaterPoints.find { it.id == pointId }?.let { p ->
+    val point = remember(userLocation, waterPointsState) {
+        waterPointsState.find { it.id == pointId }?.let { p ->
             val dist = userLocation?.let { loc ->
                 LocationUtils.calculateDistance(loc.latitude, loc.longitude, p.latitude, p.longitude)
             }
@@ -67,6 +74,25 @@ fun WaterPointDetailScreen(
             Text(stringResource(R.string.error_point_not_found))
         }
         return
+    }
+
+    if (showReportDialog) {
+        ReportDialog(
+            pointName = point.name,
+            onDismiss = { showReportDialog = false },
+            onSend = { type, desc ->
+                homeViewModel.addReport(
+                    WaterPointReport(
+                        id = UUID.randomUUID().toString(),
+                        pointId = pointId,
+                        type = type,
+                        description = desc,
+                        date = "Hoy"
+                    )
+                )
+                showReportDialog = false
+            }
+        )
     }
 
     val primary = MaterialTheme.colorScheme.primary
@@ -92,7 +118,8 @@ fun WaterPointDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp),
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Header Card
@@ -143,17 +170,31 @@ fun WaterPointDetailScreen(
                 InfoItem(Modifier.weight(1f), Icons.Default.Category, stringResource(R.string.label_type), point.type.displayName, secondary)
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
-
             Text(stringResource(R.string.label_exact_location), fontWeight = FontWeight.Bold, color = primary, fontSize = 18.sp)
             val latStr = String.format(Locale.getDefault(), "%.6f", point.latitude)
             val lngStr = String.format(Locale.getDefault(), "%.6f", point.longitude)
             Text("${stringResource(R.string.label_latitude)}: $latStr\n${stringResource(R.string.label_longitude)}: $lngStr", color = primary.copy(alpha = 0.6f))
 
-            Spacer(modifier = Modifier.weight(1f))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = primary.copy(alpha = 0.1f))
+
+            // SECCIÓN DE REPORTES ACTIVOS
+            if (reports.isNotEmpty()) {
+                ReportsSection(reports)
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = primary.copy(alpha = 0.1f))
+            }
+
+            // SECCIÓN DE COMENTARIOS
+            CommentSection(
+                comments = comments,
+                onAddComment = { text ->
+                    homeViewModel.addComment(pointId, text, 5)
+                }
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
 
             Button(
-                onClick = { /* Reportar problema */ },
+                onClick = { showReportDialog = true },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = secondary)
@@ -164,6 +205,170 @@ fun WaterPointDetailScreen(
             }
         }
     }
+}
+
+@Composable
+fun ReportsSection(reports: List<WaterPointReport>) {
+    val primary = MaterialTheme.colorScheme.primary
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFE67E22), modifier = Modifier.size(20.dp))
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("Reportes de la comunidad", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = primary)
+        }
+        reports.forEach { report ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFFFDEDEC)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(report.type.displayName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFFC0392B))
+                        Text(report.description, fontSize = 13.sp, color = Color.DarkGray)
+                    }
+                    Text(report.date, fontSize = 11.sp, color = Color.Gray)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun CommentSection(
+    comments: List<Comment>,
+    onAddComment: (String) -> Unit
+) {
+    var newCommentText by remember { mutableStateOf("") }
+    val primary = MaterialTheme.colorScheme.primary
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(stringResource(R.string.label_comments), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = primary)
+        
+        if (comments.isEmpty()) {
+            Text(stringResource(R.string.label_no_comments), color = Color.Gray, fontSize = 14.sp)
+        } else {
+            comments.forEach { comment ->
+                CommentItem(comment)
+            }
+        }
+
+        OutlinedTextField(
+            value = newCommentText,
+            onValueChange = { newCommentText = it },
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text(stringResource(R.string.label_share_experience), fontSize = 14.sp) },
+            shape = RoundedCornerShape(12.dp),
+            trailingIcon = {
+                IconButton(onClick = { 
+                    if (newCommentText.isNotBlank()) {
+                        onAddComment(newCommentText)
+                        newCommentText = ""
+                    }
+                }) {
+                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.btn_publish), tint = primary)
+                }
+            }
+        )
+    }
+}
+
+@Composable
+fun CommentItem(comment: Comment) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(comment.author, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
+                Text(comment.date, fontSize = 12.sp, color = Color.Gray)
+            }
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                repeat(5) { index ->
+                    Icon(
+                        Icons.Default.Star,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = if (index < comment.rating) Color(0xFFFFB300) else Color.LightGray
+                    )
+                }
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(comment.content, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+        }
+    }
+}
+
+@Composable
+fun ReportDialog(
+    pointName: String,
+    onDismiss: () -> Unit,
+    onSend: (ReportType, String) -> Unit
+) {
+    var selectedType by remember { mutableStateOf<ReportType?>(null) }
+    var description by remember { mutableStateOf("") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(
+                onClick = { selectedType?.let { onSend(it, description) } },
+                enabled = selectedType != null && description.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE67E22)),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text(stringResource(R.string.btn_send_report))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.btn_cancel), color = Color.Gray)
+            }
+        },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFE67E22))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.report_dialog_title), fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    stringResource(R.string.report_dialog_subtitle, pointName),
+                    fontSize = 12.sp,
+                    color = Color.Gray
+                )
+                
+                Text(stringResource(R.string.report_label_type), fontWeight = FontWeight.Bold)
+                
+                ReportType.values().forEach { type ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedType = type }
+                            .padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = selectedType == type, onClick = { selectedType = type })
+                        Text(type.displayName, modifier = Modifier.padding(start = 8.dp), fontSize = 14.sp)
+                    }
+                }
+                
+                Text(stringResource(R.string.report_label_description), fontWeight = FontWeight.Bold)
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    placeholder = { Text(stringResource(R.string.report_hint_description), fontSize = 14.sp) },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp),
+                    maxLines = 3
+                )
+            }
+        }
+    )
 }
 
 @Composable
