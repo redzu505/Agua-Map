@@ -40,6 +40,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun HomeScreen(
     homeViewModel: HomeViewModel,
+    isGuest: Boolean,
     onNavigateToProfile: () -> Unit,
     onNavigateToCommunity: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
@@ -283,7 +284,7 @@ fun HomeScreen(
                     CommunityScreen(homeViewModel = homeViewModel, onBack = { selectedTab = "Points" })
                 }
                 "Profile" -> {
-                    ProfileScreen(onBack = { selectedTab = "Points" })
+                    ProfileScreen(isGuest = isGuest, onBack = { selectedTab = "Points" })
                 }
                 else -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

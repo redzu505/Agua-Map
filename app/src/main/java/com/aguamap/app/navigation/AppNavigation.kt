@@ -10,6 +10,7 @@ import com.aguamap.app.ui.AddWaterPointScreen
 import com.aguamap.app.ui.CommunityScreen
 import com.aguamap.app.ui.HomeScreen
 import com.aguamap.app.ui.ProfileScreen
+import androidx.compose.runtime.collectAsState
 import com.aguamap.app.ui.WaterPointDetailScreen
 import com.aguamap.app.viewmodel.AuthViewModel
 import com.aguamap.app.viewmodel.HomeViewModel
@@ -35,12 +36,33 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
             )
         }
 
-        composable(Screen.Home.route) {
+        /*composable(Screen.Home.route) {
             HomeScreen(
                 homeViewModel = homeViewModel,
                 // Supongamos que por defecto no es invitado tras loguearse con éxito.
                 // Si estás probando el modo invitado, puedes cambiar el false por true temporalmente aquí:
                 onNavigateToProfile = { navController.navigate("profile/false") },
+                onNavigateToCommunity = { navController.navigate("community") },
+                onNavigateToDetail = { pointId ->
+                    navController.navigate(Screen.WaterPointDetail.createRoute(pointId))
+                },
+                onNavigateToAddPoint = {
+                    navController.navigate(Screen.AddWaterPoint.route)
+                }
+            )
+        }*/
+        composable(Screen.Home.route) {
+            // 1. Obtenemos si el usuario actual es un invitado desde el ViewModel de autenticación
+            val isGuestUser = authViewModel.isGuest.collectAsState().value
+
+            //Línea de control: BORRRAR
+            println("AGUAMAP_DEBUG: El valor de isGuestUser en el Home es: $isGuestUser")
+
+            HomeScreen(
+                homeViewModel = homeViewModel,
+                isGuest = isGuestUser, // Le enviamos el estado al HomeScreen
+                // 2. Pasamos el valor dinámicamente en la ruta del perfil ◄ AQUÍ SE HACE LA MAGIA
+                onNavigateToProfile = { navController.navigate("profile/$isGuestUser") },
                 onNavigateToCommunity = { navController.navigate("community") },
                 onNavigateToDetail = { pointId ->
                     navController.navigate(Screen.WaterPointDetail.createRoute(pointId))
@@ -57,6 +79,11 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
             arguments = listOf(navArgument("isGuest") { type = NavType.BoolType })
         ) { backStackEntry ->
             val isGuest = backStackEntry.arguments?.getBoolean("isGuest") ?: false
+
+            //pruebas: BORRRAR LINEA LN
+
+            println("AGUAMAP_DEBUG: El perfil recibió el argumento isGuest = $isGuest")
+
             ProfileScreen(
                 isGuest = isGuest,
                 onBack = { navController.popBackStack() },

@@ -31,7 +31,7 @@ enum class AuthState {
     START, LOGIN, REGISTER, HOME
 }
 
-@Preview
+
 @Composable
 fun LoginScreen(
     authViewModel: AuthViewModel, // ◄ RECIBIMOS EL VIEWMODEL AQUÍ
@@ -51,7 +51,10 @@ fun LoginScreen(
             when (state) {
                 AuthState.START -> StartView(
                     onLoginClick = { currentState = AuthState.LOGIN },
-                    onGuestClick = { onLoginSuccess() }
+                    onGuestClick = {
+                        authViewModel.entrarComoInvitado() // Cambia el estado a true
+                        onLoginSuccess()
+                    }
                 )
                 AuthState.LOGIN -> LoginView(
                     onBack = { currentState = AuthState.START },

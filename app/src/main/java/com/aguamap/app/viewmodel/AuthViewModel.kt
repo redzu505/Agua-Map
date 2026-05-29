@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.aguamap.app.data.repository.AppRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 /**
@@ -26,6 +27,17 @@ class AuthViewModel(private val repository: AppRepository) : ViewModel() {
     // Flujo interno mutable y flujo externo de solo lectura para la UI
     private val _registerState = MutableStateFlow<RegisterState>(RegisterState.Idle)
     val registerState: StateFlow<RegisterState> = _registerState
+
+    // Controlar si el usuario actual entró como invitado o no
+    private val _isGuest = MutableStateFlow(false)
+    val isGuest: StateFlow<Boolean> = _isGuest.asStateFlow()
+
+    /**
+     * FUNCIÓN: Cambia el estado a 'true' si el usuario decide omitir el login
+     */
+    fun entrarComoInvitado() {
+        _isGuest.value = true
+    }
 
     /**
      * Envía los datos de registro recolectados de la UI hacia el repositorio en segundo plano
@@ -54,6 +66,7 @@ class AuthViewModel(private val repository: AppRepository) : ViewModel() {
             // Evaluamos la respuesta que nos devolvió el repositorio
             resultado.onSuccess { authResponse ->
                 _registerState.value = RegisterState.Success("¡Usuario creado con éxito!")
+                _isGuest.value = false //si se registra ya no es invitado
             }.onFailure { excepcion ->
                 _registerState.value = RegisterState.Error(excepcion.message ?: "Ocurrió un error inesperado")
             }
