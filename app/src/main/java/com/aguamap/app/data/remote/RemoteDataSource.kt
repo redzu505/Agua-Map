@@ -39,4 +39,24 @@ class RemoteDataSource(private val apiService: SupabaseApiService) {
             Result.failure(e)
         }
     }
+
+    suspend fun iniciarSesion(email: String, contrasenia: String): Result<AuthResponse> {
+        return try {
+            // 1. Armamos la petición de login
+            val request = LoginRequest(email = email, password = contrasenia)
+
+            // 2. Ejecutamos el POST contra Supabase
+            val response = apiService.signIn(apiKey, bearerToken, request)
+
+            // 3. Evaluamos el resultado del servidor
+            if (response.isSuccessful && response.body() != null) {
+                Result.success(response.body()!!)
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                Result.failure(Exception("Error en Supabase: $errorMsg"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e) // Captura fallas de red/conectividad
+        }
+    }
 }

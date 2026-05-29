@@ -12,4 +12,12 @@ interface SupabaseApiService {
         @Header("Authorization") bearerToken: String,
         @Body request: SignUpRequest
     ): Response<AuthResponse>
+
+    //ENDPOINT PARA INICIO DE SESIÓN
+    @POST("auth/v1/token?grant_type=password")
+    suspend fun signIn(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Body request: LoginRequest
+    ): Response<AuthResponse>
 }

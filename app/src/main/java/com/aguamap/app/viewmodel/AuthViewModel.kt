@@ -2,6 +2,7 @@ package com.aguamap.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aguamap.app.domain.UsuarioSesion
 import com.aguamap.app.data.repository.AppRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,14 +18,17 @@ sealed interface RegisterState {
     data class Success(val message: String) : RegisterState   // Registro exitoso en Supabase
     data class Error(val error: String) : RegisterState       // Algo falló (ej. Correo ya registrado, sin internet)
 }
+/**
+ * Representa los diferentes estados en los que puede estar la pantalla de login
+ */
+sealed interface LoginState {
+    object Idle : LoginState                                // Esperando acción del usuario
+    object Loading : LoginState                             // Procesando credenciales (Cargando...)
+    object Success : LoginState                             // Login correcto
+    data class Error(val error: String) : LoginState        // Credenciales inválidas o sin red
+}
 
-data class UsuarioSesion(
-    val nombre: String = "",
-    val usuario: String = "",
-    val email: String = "",
-    val telefono: String = "",
-    val dni: String = ""
-)
+
 
 /**
  * CAPA DE VIEWMODEL - AUTENTICACIÓN
@@ -43,6 +47,10 @@ class AuthViewModel(private val repository: AppRepository) : ViewModel() {
     //El estado que guardará al usuario logueado en la RAM
     private val _usuarioLogueado = MutableStateFlow<UsuarioSesion?>(null)
     val usuarioLogueado: StateFlow<UsuarioSesion?> = _usuarioLogueado.asStateFlow()
+
+    // Flujo interno mutable y externo de solo lectura para el estado del Login
+    private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
+    val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
 
     /**
      * FUNCIÓN: Cambia el estado a 'true' si el usuario decide omitir el login
@@ -95,6 +103,32 @@ class AuthViewModel(private val repository: AppRepository) : ViewModel() {
     }
 
     /**
+     * FUNCIÓN: Valida las credenciales contra el repositorio
+     */
+    fun iniciarSesion(email: String, contrasenia: String) {
+        if (email.isBlank() || contrasenia.isBlank()) {
+            _loginState.value = LoginState.Error("Por favor, llena todos los campos.")
+            return
+        }
+
+        viewModelScope.launch {
+            _loginState.value = LoginState.Loading
+
+            // Al llamar al repositorio, 'resultado' ya sabe que es un Result<UsuarioSesion>
+            val resultado = repository.iniciarSesion(email, contrasenia)
+
+            resultado.onSuccess { usuarioDeBackend ->
+                // Como el repositorio ya nos da el objeto estructurado, lo guardamos directo en la RAM
+                _usuarioLogueado.value = usuarioDeBackend
+                _isGuest.value = false
+                _loginState.value = LoginState.Success
+            }.onFailure { excepcion ->
+                _loginState.value = LoginState.Error(excepcion.message ?: "Correo o contraseña incorrectos")
+            }
+        }
+    }
+
+    /**
      * Función de Ajustes
      * para actualizar los datos tanto en Supabase como en la pantalla de la app.
      * EN PRUEBA AÚN...
@@ -112,6 +146,13 @@ class AuthViewModel(private val repository: AppRepository) : ViewModel() {
             // Al hacer este .copy(), cualquier pantalla que mire "usuarioLogueado" (como el Perfil)
             // se actualizará sola en tiempo real.
         }
+    }
+
+    /**
+     * Limpia el estado de error del login al escribir o cerrar alertas
+     */
+    fun resetLoginState() {
+        _loginState.value = LoginState.Idle
     }
 
     /**

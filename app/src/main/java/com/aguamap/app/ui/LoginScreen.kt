@@ -24,8 +24,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aguamap.app.viewmodel.AuthViewModel   // ◄ NUEVO IMPORT
-import com.aguamap.app.viewmodel.RegisterState // ◄ NUEVO IMPORT
+import com.aguamap.app.viewmodel.AuthViewModel   // NUEVO IMPORT
+import com.aguamap.app.viewmodel.RegisterState // UEVO IMPORT
+import com.aguamap.app.viewmodel.LoginState // NUEVO IMPORT
 
 enum class AuthState {
     START, LOGIN, REGISTER, HOME
@@ -57,6 +58,7 @@ fun LoginScreen(
                     }
                 )
                 AuthState.LOGIN -> LoginView(
+                    authViewModel = authViewModel,
                     onBack = { currentState = AuthState.START },
                     onRegisterClick = { currentState = AuthState.REGISTER },
                     onLoginSuccess = { onLoginSuccess() }
@@ -167,6 +169,100 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
 }
 
 @Composable
+fun LoginView(
+    authViewModel: AuthViewModel,
+    onBack: () -> Unit,           //
+    onRegisterClick: () -> Unit,   //
+    onLoginSuccess: () -> Unit
+) {
+    var userId by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+    val context = LocalContext.current
+
+    // 1. Escuchamos de forma reactiva el estado del Login desde el ViewModel
+    val loginState by authViewModel.loginState.collectAsState()
+
+    // 2. Manejo de navegación o alertas según lo que responda el repositorio
+    LaunchedEffect(loginState) {
+        when (loginState) {
+            is LoginState.Success -> {
+                authViewModel.resetLoginState()
+                onLoginSuccess() // Entra a la app con datos cargados
+            }
+            is LoginState.Error -> {
+                Toast.makeText(context, (loginState as LoginState.Error).error, Toast.LENGTH_LONG).show()
+                authViewModel.resetLoginState()
+            }
+            else -> {}
+        }
+    }
+
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        HeaderSection(title = "Iniciar Sesión", onBack = onBack)
+
+        Spacer(modifier = Modifier.height(40.dp))
+
+        AuthTextField(value = userId, onValueChange = { userId = it }, label = "Usuario o Correo", icon = Icons.Default.Person)
+        AuthTextField(value = password, onValueChange = { password = it }, label = "Contraseña", icon = Icons.Default.Lock, isPassword = true)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            "¿Olvidaste tu contraseña?",
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.End,
+            color = secondary,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // 3. Control de UI: Si está cargando muestra el Spinner, si no, el Botón
+        if (loginState is LoginState.Loading) {
+            CircularProgressIndicator(color = primary)
+        } else {
+            Button(
+                onClick = {
+                    if (userId.isNotBlank() && password.isNotBlank()) {
+                        // Enviamos los datos para validar en el ViewModel
+                        authViewModel.iniciarSesion(
+                            email = userId.trim(),
+                            contrasenia = password.trim()
+                        )
+                    } else {
+                        Toast.makeText(context, "Por favor, llena todos los campos", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = primary)
+            ) {
+                Text("Ingresar", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Row {
+            Text("¿Nuevo en SJL? ", color = primary.copy(alpha = 0.7f))
+            Text(
+                "Crea una cuenta",
+                color = secondary,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.clickable { onRegisterClick() }
+            )
+        }
+    }
+}
+
+/*@Composable
 fun LoginView(onBack: () -> Unit, onRegisterClick: () -> Unit, onLoginSuccess: () -> Unit) {
     var userId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
@@ -218,7 +314,9 @@ fun LoginView(onBack: () -> Unit, onRegisterClick: () -> Unit, onLoginSuccess: (
             )
         }
     }
-}
+}*/
+
+
 
 @Composable
 fun RegisterView(

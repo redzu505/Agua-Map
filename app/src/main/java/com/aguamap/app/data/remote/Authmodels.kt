@@ -7,16 +7,31 @@ data class SignUpRequest(
     val data: UserMetadata
 )
 
-// Los campos extra que capturas en tu RegisterView
-data class UserMetadata(
-    val full_name: String,
-    val dni: String,
-    val phone: String,
-    val username: String
+//añadido para login
+data class LoginRequest(
+    val email: String,
+    val password: String
 )
 
-// Lo que Supabase nos responde cuando el registro es exitoso
+// Los campos extra que se captura en  RegisterView
+// Nota: Les ponemos "? = null" por seguridad para que Gson no rompa si alguno falta
+data class UserMetadata(
+    val full_name: String? = null,
+    val dni: String? = null,
+    val phone: String? = null,
+    val username: String? = null
+)
+
+// Lo que Supabase responde en Login y Registro (Estructura real completa)
 data class AuthResponse(
-    val id: String,
-    val email: String
+    val access_token: String? = null,
+    val refresh_token: String? = null,
+    val user: SupabaseUser? = null // ◄ Esto remueve el error en rojo del repositorio
+)
+
+// El objeto intermedio que contiene la información del usuario en Supabase
+data class SupabaseUser(
+    val id: String? = null,
+    val email: String? = null,
+    val user_metadata: UserMetadata? = null // ◄ Aquí viaja la bolsita con nombre, dni, etc.
 )

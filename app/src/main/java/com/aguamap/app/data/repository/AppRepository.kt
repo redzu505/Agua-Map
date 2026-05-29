@@ -1,6 +1,7 @@
 package com.aguamap.app.data.repository
 
 import com.aguamap.app.data.local.LocalDataSource
+import com.aguamap.app.domain.UsuarioSesion
 import com.aguamap.app.data.remote.AuthResponse     // import para autenticación
 import com.aguamap.app.data.remote.RemoteDataSource // import para autenticación
 import com.aguamap.app.domain.Comment
@@ -46,6 +47,39 @@ class AppRepository(private val localDataSource: LocalDataSource, private val re
             telefono = telefono,
             usuario = usuario
         )
+    }
+
+
+    /*suspend fun iniciarSesion(email: String, contrasenia: String): Result<UsuarioSesion> {
+        return try {
+            // TODO: Aquí conectarás con Supabase real más adelante.
+            // Por ahora, devolvemos un usuario de prueba para que la app funcione:
+            val usuarioMock = UsuarioSesion(
+                nombre = "Juan Pérez",
+                usuario = "juanito123",
+                email = email,
+                telefono = "987654321",
+                dni = "77777777"
+            )
+            Result.success(usuarioMock)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }*/
+    suspend fun iniciarSesion(email: String, contrasenia: String): Result<UsuarioSesion> {
+        return remoteDataSource.iniciarSesion(email, contrasenia).map { authResponse ->
+            // Supabase devuelve la metadata (nombre, dni, etc.) dentro del objeto 'user'
+            // NOTA: Ajusta las llamadas (.user o .user_metadata) según cómo esté mapeado tu 'AuthResponse'
+            val metadata = authResponse.user?.user_metadata
+
+            UsuarioSesion(
+                nombre = metadata?.full_name ?: "",
+                usuario = metadata?.username ?: "",
+                email = authResponse.user?.email ?: email,
+                telefono = metadata?.phone ?: "",
+                dni = metadata?.dni ?: ""
+            )
+        }
     }
 
 
