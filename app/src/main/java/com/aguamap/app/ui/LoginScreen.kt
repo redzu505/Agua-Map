@@ -1,5 +1,6 @@
 package com.aguamap.app.ui
 
+import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -14,10 +15,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -25,16 +24,21 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.aguamap.app.ui.theme.AguaMapTheme
+import com.aguamap.app.viewmodel.AuthViewModel   // ◄ NUEVO IMPORT
+import com.aguamap.app.viewmodel.RegisterState // ◄ NUEVO IMPORT
 
 enum class AuthState {
     START, LOGIN, REGISTER, HOME
 }
 
+@Preview
 @Composable
-fun LoginScreen(onLoginSuccess: () -> Unit) {
+fun LoginScreen(
+    authViewModel: AuthViewModel, // ◄ RECIBIMOS EL VIEWMODEL AQUÍ
+    onLoginSuccess: () -> Unit
+) {
     var currentState by remember { mutableStateOf(AuthState.START) }
-    
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -55,7 +59,12 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                     onLoginSuccess = { onLoginSuccess() }
                 )
                 AuthState.REGISTER -> RegisterView(
-                    onBack = { currentState = AuthState.LOGIN }
+                    authViewModel = authViewModel, // ◄ SE LO PASAMOS A LA VISTA DE REGISTRO
+                    onBack = {
+                        authViewModel.resetRegisterState()
+                        currentState = AuthState.LOGIN
+                    },
+                    onRegisterSuccess = { onLoginSuccess() } // Si se registra, entra directo
                 )
                 AuthState.HOME -> { /* Ya no navegamos internamente a Home */ }
             }
@@ -75,7 +84,6 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Branding
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             modifier = Modifier.padding(top = 60.dp)
@@ -111,7 +119,6 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
             )
         }
 
-        // Welcome Text
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 "¡Bienvenido a AguaMap!",
@@ -129,7 +136,6 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
             )
         }
 
-        // Actions
         Column(
             modifier = Modifier.fillMaxWidth(),
             verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -151,7 +157,7 @@ fun StartView(onLoginClick: () -> Unit, onGuestClick: () -> Unit) {
                 modifier = Modifier.clickable { onGuestClick() },
                 textDecoration = TextDecoration.Underline
             )
-            
+
             Spacer(modifier = Modifier.height(20.dp))
         }
     }
@@ -169,7 +175,7 @@ fun LoginView(onBack: () -> Unit, onRegisterClick: () -> Unit, onLoginSuccess: (
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         HeaderSection(title = "Iniciar Sesión", onBack = onBack)
-        
+
         Spacer(modifier = Modifier.height(40.dp))
 
         AuthTextField(value = userId, onValueChange = { userId = it }, label = "Usuario", icon = Icons.Default.Person)
@@ -212,15 +218,39 @@ fun LoginView(onBack: () -> Unit, onRegisterClick: () -> Unit, onLoginSuccess: (
 }
 
 @Composable
-fun RegisterView(onBack: () -> Unit) {
+fun RegisterView(
+    authViewModel: AuthViewModel, // ◄ CAMBIO
+    onBack: () -> Unit,
+    onRegisterSuccess: () -> Unit // ◄ CAMBIO
+) {
     var nombre by remember { mutableStateOf("") }
     var dni by remember { mutableStateOf("") }
     var correo by remember { mutableStateOf("") }
     var telefono by remember { mutableStateOf("") }
     var userId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
+    val context = LocalContext.current
+
+    // Escuchamos de forma reactiva el estado de la petición desde el ViewModel
+    val registerState by authViewModel.registerState.collectAsState()
+
+    // Manejo de eventos según el estado del servidor
+    LaunchedEffect(registerState) {
+        when (registerState) {
+            is RegisterState.Success -> {
+                Toast.makeText(context, (registerState as RegisterState.Success).message, Toast.LENGTH_LONG).show()
+                authViewModel.resetRegisterState()
+                onRegisterSuccess() // Mandamos al usuario dentro de la app
+            }
+            is RegisterState.Error -> {
+                Toast.makeText(context, (registerState as RegisterState.Error).error, Toast.LENGTH_LONG).show()
+            }
+            else -> {}
+        }
+    }
 
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(rememberScrollState()),
@@ -239,15 +269,33 @@ fun RegisterView(onBack: () -> Unit) {
 
         Spacer(modifier = Modifier.height(32.dp))
 
-        Button(
-            onClick = { /* Lógica de Registro */ },
-            modifier = Modifier.fillMaxWidth().height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = secondary)
-        ) {
-            Text("Registrarse", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+        // Si está cargando, cambiamos el botón por un indicador de carga circular
+        if (registerState is RegisterState.Loading) {
+            CircularProgressIndicator(color = secondary)
+        } else {
+            Button(
+                onClick = {
+                    if (correo.isNotBlank() && password.isNotBlank() && nombre.isNotBlank()) {
+                        authViewModel.registrarUsuario(
+                            email = correo.trim(),
+                            contrasenia = password.trim(),
+                            nombre = nombre.trim(),
+                            dni = dni.trim(),
+                            telefono = telefono.trim(),
+                            usuario = userId.trim()
+                        )
+                    } else {
+                        Toast.makeText(context, "Por favor, llena los campos obligatorios", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = secondary)
+            ) {
+                Text("Registrarse", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+            }
         }
-        
+
         Spacer(modifier = Modifier.height(24.dp))
     }
 }
@@ -296,12 +344,4 @@ fun AuthTextField(
             unfocusedLabelColor = primary.copy(alpha = 0.5f)
         )
     )
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun LoginScreenPreview() {
-    AguaMapTheme {
-        LoginScreen(onLoginSuccess = {})
-    }
 }

@@ -1,6 +1,8 @@
 package com.aguamap.app.data.repository
 
 import com.aguamap.app.data.local.LocalDataSource
+import com.aguamap.app.data.remote.AuthResponse     // import para autenticación
+import com.aguamap.app.data.remote.RemoteDataSource // import para autenticación
 import com.aguamap.app.domain.Comment
 import com.aguamap.app.domain.CommunityNews
 import com.aguamap.app.domain.WaterPoint
@@ -13,7 +15,7 @@ import com.aguamap.app.domain.WaterPointType
  * El repositorio es la única fuente de verdad. Decide si los datos
  * vienen de la base de datos local o de la API remota.
  */
-class AppRepository(private val localDataSource: LocalDataSource) {
+class AppRepository(private val localDataSource: LocalDataSource, private val remoteDataSource: RemoteDataSource) {
 
     // Simulación de datos remotos para la Fase 1
     private val mockRemotePoints = listOf(
@@ -22,6 +24,34 @@ class AppRepository(private val localDataSource: LocalDataSource) {
         WaterPoint("3", "Pozo Huiracocha", "Parque Zonal Huiracocha", 4.2, "---", "Cerrado", WaterPointStatus.MANTENIMIENTO, WaterPointType.POZO, -11.9961, -76.9958),
         WaterPoint("4", "Grifo Caja de Agua", "Estación Caja de Agua", 4.9, "---", "24h", WaterPointStatus.OPERATIVO, WaterPointType.GRIFO, -12.0272, -77.0142)
     )
+
+    // ==========================================
+    // SECCIÓN: AUTENTICACIÓN
+    // ==========================================
+
+    suspend fun registrarUsuario(
+        email: String,
+        contrasenia: String,
+        nombre: String,
+        dni: String,
+        telefono: String,
+        usuario: String
+    ): Result<AuthResponse> {
+        // Conecta directamente con Supabase mediante el RemoteDataSource
+        return remoteDataSource.registrarUsuario(
+            email = email,
+            contrasenia = contrasenia,
+            nombre = nombre,
+            dni = dni,
+            telefono = telefono,
+            usuario = usuario
+        )
+    }
+
+
+    // ==========================================
+    // SECCIÓN: PUNTOS DE AGUA Y COMENTARIOS
+    // ==========================================
 
     suspend fun getWaterPoints(): List<WaterPoint> {
         // Estrategia Offline-First: Primero intentamos obtener caché local
