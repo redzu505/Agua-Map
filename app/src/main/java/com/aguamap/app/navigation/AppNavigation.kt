@@ -55,12 +55,18 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
             // 1. Obtenemos si el usuario actual es un invitado desde el ViewModel de autenticación
             val isGuestUser = authViewModel.isGuest.collectAsState().value
 
+            // 2.Obtenemos el objeto completo del usuario desde el AuthViewModel
+            val usuario = authViewModel.usuarioLogueado.collectAsState().value
+
             //Línea de control: BORRRAR
             println("AGUAMAP_DEBUG: El valor de isGuestUser en el Home es: $isGuestUser")
+            println("AGUAMAP_DEBUG: El usuario en sesión es: ${usuario?.nombre ?: "Ninguno (Invitado)"}")
 
             HomeScreen(
                 homeViewModel = homeViewModel,
                 isGuest = isGuestUser, // Le enviamos el estado al HomeScreen
+                userName = usuario?.nombre ?: "Usuario",   // ◄ NUEVO: Si es nulo (invitado), usa "Usuario" por defecto
+                userEmail = usuario?.email ?: "",           // ◄ NUEVO: Si es nulo, queda vacío
                 // 2. Pasamos el valor dinámicamente en la ruta del perfil ◄ AQUÍ SE HACE LA MAGIA
                 onNavigateToProfile = { navController.navigate("profile/$isGuestUser") },
                 onNavigateToCommunity = { navController.navigate("community") },
@@ -80,12 +86,17 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
         ) { backStackEntry ->
             val isGuest = backStackEntry.arguments?.getBoolean("isGuest") ?: false
 
+            //Obtenemos el usuario aquí también para la ruta directa
+            val usuario = authViewModel.usuarioLogueado.collectAsState().value
+
             //pruebas: BORRRAR LINEA LN
 
             println("AGUAMAP_DEBUG: El perfil recibió el argumento isGuest = $isGuest")
 
             ProfileScreen(
                 isGuest = isGuest,
+                userName = usuario?.nombre ?: "Usuario", // Pasamos el nombre real o default
+                userEmail = usuario?.email ?: "",       // Pasamos el correo real o vacío
                 onBack = { navController.popBackStack() },
                 onLoginClick = {
                     // Si es invitado y presiona iniciar sesión, lo regresamos a la pantalla de Login

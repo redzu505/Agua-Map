@@ -18,6 +18,14 @@ sealed interface RegisterState {
     data class Error(val error: String) : RegisterState       // Algo falló (ej. Correo ya registrado, sin internet)
 }
 
+data class UsuarioSesion(
+    val nombre: String = "",
+    val usuario: String = "",
+    val email: String = "",
+    val telefono: String = "",
+    val dni: String = ""
+)
+
 /**
  * CAPA DE VIEWMODEL - AUTENTICACIÓN
  * Gestiona el estado del login y registro de usuarios interactuando con el repositorio.
@@ -32,11 +40,16 @@ class AuthViewModel(private val repository: AppRepository) : ViewModel() {
     private val _isGuest = MutableStateFlow(false)
     val isGuest: StateFlow<Boolean> = _isGuest.asStateFlow()
 
+    //El estado que guardará al usuario logueado en la RAM
+    private val _usuarioLogueado = MutableStateFlow<UsuarioSesion?>(null)
+    val usuarioLogueado: StateFlow<UsuarioSesion?> = _usuarioLogueado.asStateFlow()
+
     /**
      * FUNCIÓN: Cambia el estado a 'true' si el usuario decide omitir el login
      */
     fun entrarComoInvitado() {
         _isGuest.value = true
+        _usuarioLogueado.value = null // No hay usuario
     }
 
     /**
@@ -65,11 +78,39 @@ class AuthViewModel(private val repository: AppRepository) : ViewModel() {
 
             // Evaluamos la respuesta que nos devolvió el repositorio
             resultado.onSuccess { authResponse ->
-                _registerState.value = RegisterState.Success("¡Usuario creado con éxito!")
+                //Al registrarse con éxito, guardamos los datos en nuestro estado local
+                _usuarioLogueado.value = UsuarioSesion(
+                    nombre = nombre,
+                    usuario = usuario,
+                    email = email,
+                    telefono = telefono,
+                    dni = dni
+                )
                 _isGuest.value = false //si se registra ya no es invitado
+                _registerState.value = RegisterState.Success("¡Usuario creado con éxito!")
             }.onFailure { excepcion ->
                 _registerState.value = RegisterState.Error(excepcion.message ?: "Ocurrió un error inesperado")
             }
+        }
+    }
+
+    /**
+     * Función de Ajustes
+     * para actualizar los datos tanto en Supabase como en la pantalla de la app.
+     * EN PRUEBA AÚN...
+     */
+    fun actualizarDatosUsuario(nuevoNombre: String, nuevoTelefono: String) {
+        viewModelScope.launch {
+            // 1. Aquí llamarías a tu repositorio para actualizar Supabase:
+            // repository.actualizarPerfil(...)
+
+            // 2. Si el backend responde OK, actualizamos nuestro StateFlow local:
+            _usuarioLogueado.value = _usuarioLogueado.value?.copy(
+                nombre = nuevoNombre,
+                telefono = nuevoTelefono
+            )
+            // Al hacer este .copy(), cualquier pantalla que mire "usuarioLogueado" (como el Perfil)
+            // se actualizará sola en tiempo real.
         }
     }
 

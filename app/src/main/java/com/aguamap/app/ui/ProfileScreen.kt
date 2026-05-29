@@ -31,6 +31,8 @@ import kotlinx.coroutines.launch
 fun ProfileScreen(
     onBack: () -> Unit = {},
     isGuest: Boolean = false, // ◄ NUEVO: Controla si es invitado o no
+    userName: String,
+    userEmail: String,
     onLoginClick: () -> Unit = {} // ◄ NUEVO: Acción para mandarlo a loguearse
 ) {
     val context = LocalContext.current
@@ -72,7 +74,7 @@ fun ProfileScreen(
                 if (isGuest) {
                     GuestHeader(onLoginClick = onLoginClick)
                 } else {
-                    ProfileHeader()
+                    ProfileHeader(userName = userName, userEmail = userEmail)
                 }
             }
 
@@ -163,7 +165,7 @@ fun GuestHeader(onLoginClick: () -> Unit) {
 }
 
 @Composable
-fun ProfileHeader() {
+fun ProfileHeader(userName: String, userEmail: String) {
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
 
@@ -208,10 +210,17 @@ fun ProfileHeader() {
 
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "Mateo Fernández", // TODO: En la Fase 2 traeremos el nombre real de la BD
+            text = userName,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = primary
+        )
+        // Añadimos el correo debajo del nombre, BORRAR DE SER NECESARIO
+        Text(
+            text = userEmail,
+            fontSize = 14.sp,
+            color = primary.copy(alpha = 0.6f),
+            modifier = Modifier.padding(top = 2.dp)
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -502,7 +511,10 @@ fun SettingsItem(icon: ImageVector, label: String, textColor: Color) {
 @Composable
 fun ProfileScreenRegisteredPreview() {
     com.aguamap.app.ui.theme.AguaMapTheme { // Usamos tu tema personalizado
-        ProfileScreen(isGuest = false)
+        ProfileScreen(isGuest = false,
+        userName = "Mateo Fernández", // Datos de prueba para el Preview
+        userEmail = "mateo@email.com"
+        )
     }
 }
 
@@ -510,6 +522,9 @@ fun ProfileScreenRegisteredPreview() {
 @Composable
 fun ProfileScreenGuestPreview() {
     com.aguamap.app.ui.theme.AguaMapTheme { // Usamos tu tema personalizado
-        ProfileScreen(isGuest = true)
+        ProfileScreen(isGuest = true,
+        userName = "Invitado",          // Datos de prueba para el Preview
+        userEmail = ""
+        )
     }
 }
