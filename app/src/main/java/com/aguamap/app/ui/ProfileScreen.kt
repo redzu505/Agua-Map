@@ -18,6 +18,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.aguamap.app.data.local.UserPreferencesRepository
@@ -26,14 +28,20 @@ import com.aguamap.app.domain.UserPreferences
 import kotlinx.coroutines.launch
 
 @Composable
-fun ProfileScreen(onBack: () -> Unit = {}) {
+fun ProfileScreen(
+    onBack: () -> Unit = {},
+    isGuest: Boolean = false, // ◄ NUEVO: Controla si es invitado o no
+    userName: String,
+    userEmail: String,
+    onLoginClick: () -> Unit = {} // ◄ NUEVO: Acción para mandarlo a loguearse
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val repository = remember { UserPreferencesRepository(context) }
     val userPreferences by repository.userPreferencesFlow.collectAsState(initial = UserPreferences())
 
     val colorScheme = MaterialTheme.colorScheme
-    
+
     Box(modifier = Modifier.fillMaxSize().background(colorScheme.background)) {
         LazyColumn(
             modifier = Modifier
@@ -43,7 +51,7 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
         ) {
             item { Spacer(modifier = Modifier.height(16.dp)) }
 
-            // Profile Header Section
+            // Cabecera de la pantalla
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -61,15 +69,23 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                     )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                ProfileHeader()
+
+                // CONDICIONAL: Si es invitado mostramos banner de invitación, si no, sus datos reales
+                if (isGuest) {
+                    GuestHeader(onLoginClick = onLoginClick)
+                } else {
+                    ProfileHeader(userName = userName, userEmail = userEmail)
+                }
             }
 
-            // Impact Section (Bento Style)
-            item {
-                ImpactSection()
+            // Sección de Impacto: Solo se muestra a usuarios registrados
+            if (!isGuest) {
+                item {
+                    ImpactSection()
+                }
             }
 
-            // Preferences Section
+            // Preferencias de SJL: ¡Ambos pueden configurarlo! Excelente UX
             item {
                 PreferencesSection(
                     preferences = userPreferences,
@@ -80,14 +96,16 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
                 )
             }
 
-            // Saved Points Section
-            item {
-                SavedPointsSection()
+            // Puntos Guardados: Solo para usuarios registrados
+            if (!isGuest) {
+                item {
+                    SavedPointsSection()
+                }
             }
 
-            // Settings Section
+            // Ajustes y Botón de salir/entrar
             item {
-                SettingsSection()
+                SettingsSection(isGuest = isGuest, onLoginClick = onLoginClick, onLogoutClick = onBack)
             }
 
             item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -95,8 +113,59 @@ fun ProfileScreen(onBack: () -> Unit = {}) {
     }
 }
 
+/**
+ * NUEVO COMPONENTE: Cabecera amigable para cuando navegas como Invitado
+ */
 @Composable
-fun ProfileHeader() {
+fun GuestHeader(onLoginClick: () -> Unit) {
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(2.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                Icons.Default.AccountCircle,
+                contentDescription = null,
+                modifier = Modifier.size(72.dp),
+                tint = primary.copy(alpha = 0.2f)
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                "Modo Invitado",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = primary
+            )
+            Text(
+                "Inicia sesión para registrar tu consumo de agua potable, reportar nuevas fuentes y unirte a la comunidad de SJL.",
+                fontSize = 14.sp,
+                color = primary.copy(alpha = 0.6f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(
+                onClick = onLoginClick,
+                colors = ButtonDefaults.buttonColors(containerColor = secondary),
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Iniciar Sesión / Registrarse", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfileHeader(userName: String, userEmail: String) {
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
 
@@ -109,11 +178,7 @@ fun ProfileHeader() {
                 modifier = Modifier
                     .size(100.dp)
                     .clip(CircleShape)
-                    .background(
-                        Brush.linearGradient(
-                            colors = listOf(secondary, primary)
-                        )
-                    )
+                    .background(Brush.linearGradient(colors = listOf(secondary, primary)))
                     .padding(3.dp)
             ) {
                 Surface(
@@ -145,29 +210,26 @@ fun ProfileHeader() {
 
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            "Mateo Fernández",
+            text = userName,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             color = primary
+        )
+        // Añadimos el correo debajo del nombre, BORRAR DE SER NECESARIO
+        Text(
+            text = userEmail,
+            fontSize = 14.sp,
+            color = primary.copy(alpha = 0.6f),
+            modifier = Modifier.padding(top = 2.dp)
         )
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
             modifier = Modifier.padding(top = 4.dp)
         ) {
-            Icon(
-                Icons.Default.MilitaryTech,
-                contentDescription = null,
-                tint = secondary,
-                modifier = Modifier.size(18.dp)
-            )
+            Icon(Icons.Default.MilitaryTech, contentDescription = null, tint = secondary, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                "Guardián del Agua",
-                color = secondary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+            Text("Guardián del Agua", color = secondary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -178,32 +240,15 @@ fun ImpactSection() {
     val secondary = MaterialTheme.colorScheme.secondary
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            "Tu Impacto",
-            color = primary.copy(alpha = 0.6f),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
-        )
+        Text("Tu Impacto", color = primary.copy(alpha = 0.6f), fontSize = 16.sp, fontWeight = FontWeight.Medium)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ImpactCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.WaterDrop,
-                value = "42L",
-                label = "Agua consumida",
-                accentColor = primary
-            )
-            ImpactCard(
-                modifier = Modifier.weight(1f),
-                icon = Icons.Default.Recycling,
-                value = "84",
-                label = "Botellas evitadas",
-                accentColor = secondary
-            )
+            ImpactCard(modifier = Modifier.weight(1f), icon = Icons.Default.WaterDrop, value = "42L", label = "Agua consumida", accentColor = primary)
+            ImpactCard(modifier = Modifier.weight(1f), icon = Icons.Default.Recycling, value = "84", label = "Botellas evitadas", accentColor = secondary)
         }
-        
+
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -216,17 +261,8 @@ fun ImpactSection() {
                 modifier = Modifier.fillMaxWidth().padding(16.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = secondary.copy(alpha = 0.1f),
-                        shape = RoundedCornerShape(8.dp),
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.AddLocationAlt,
-                            contentDescription = null,
-                            tint = secondary,
-                            modifier = Modifier.padding(12.dp)
-                        )
+                    Surface(color = secondary.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), modifier = Modifier.size(48.dp)) {
+                        Icon(Icons.Default.AddLocationAlt, contentDescription = null, tint = secondary, modifier = Modifier.padding(12.dp))
                     }
                     Spacer(modifier = Modifier.width(16.dp))
                     Column {
@@ -241,23 +277,14 @@ fun ImpactSection() {
 }
 
 @Composable
-fun ImpactCard(
-    modifier: Modifier,
-    icon: ImageVector,
-    value: String,
-    label: String,
-    accentColor: Color
-) {
+fun ImpactCard(modifier: Modifier, icon: ImageVector, value: String, label: String, accentColor: Color) {
     Card(
         modifier = modifier.aspectRatio(1f),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
+        Column(modifier = Modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.SpaceBetween) {
             Icon(icon, contentDescription = null, tint = accentColor)
             Column {
                 Text(value, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
@@ -278,20 +305,9 @@ fun SavedPointsSection() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                "Mis Puntos Guardados",
-                color = primary.copy(alpha = 0.6f),
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                "Ver todos",
-                color = secondary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Text("Mis Puntos Guardados", color = primary.copy(alpha = 0.6f), fontSize = 16.sp, fontWeight = FontWeight.Medium)
+            Text("Ver todos", color = secondary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
-        
         SavedPointItem("Fuente Parque Central", "Potable • 200m", Color(0xFF4CAF50))
         SavedPointItem("Estación Eco-Sustentable", "Filtrada • 1.2km", Color(0xFF4CAF50))
     }
@@ -301,22 +317,16 @@ fun SavedPointsSection() {
 fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
-    
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(1.dp)
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth().padding(16.dp)
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(16.dp)) {
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(secondary.copy(alpha = 0.1f)),
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)).background(secondary.copy(alpha = 0.1f)),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Default.Water, contentDescription = null, tint = secondary)
@@ -325,12 +335,7 @@ fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(title, color = primary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(statusColor)
-                    )
+                    Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(statusColor))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(subtitle, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontSize = 14.sp)
                 }
@@ -341,23 +346,35 @@ fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
 }
 
 @Composable
-fun SettingsSection() {
+fun SettingsSection(
+    isGuest: Boolean, // ◄ ADAPTADO
+    onLoginClick: () -> Unit, // ◄ ADAPTADO
+    onLogoutClick: () -> Unit // ◄ ADAPTADO
+) {
     val primary = MaterialTheme.colorScheme.primary
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SettingsItem(Icons.Default.Settings, "Ajustes", primary)
         SettingsItem(Icons.Default.Shield, "Privacidad", primary)
         Spacer(modifier = Modifier.height(8.dp))
+
+        // El último botón cambia dinámicamente según el tipo de usuario
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(12.dp))
-                .clickable { /* Logout */ }
+                .clickable { if (isGuest) onLoginClick() else onLogoutClick() }
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFD32F2F))
-            Spacer(modifier = Modifier.width(12.dp))
-            Text("Cerrar Sesión", color = Color(0xFFD32F2F), fontWeight = FontWeight.Bold)
+            if (isGuest) {
+                Icon(Icons.Default.Login, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("Iniciar Sesión", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
+            } else {
+                Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFD32F2F))
+                Spacer(modifier = Modifier.width(12.dp))
+                Text("Cerrar Sesión", color = Color(0xFFD32F2F), fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
@@ -375,12 +392,7 @@ fun PreferencesSection(
     var expanded by remember { mutableStateOf(false) }
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            "Preferencias de SJL",
-            color = primary.copy(alpha = 0.6f),
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium
-        )
+        Text("Preferencias de SJL", color = primary.copy(alpha = 0.6f), fontSize = 16.sp, fontWeight = FontWeight.Medium)
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -389,8 +401,6 @@ fun PreferencesSection(
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                
-                // Sector Selector
                 Column {
                     Text("Tu Sector", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = primary)
                     Box(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
@@ -400,11 +410,7 @@ fun PreferencesSection(
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.outlinedButtonColors(contentColor = primary)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                                 Text(preferences.selectedSector)
                                 Icon(Icons.Default.ArrowDropDown, contentDescription = null, tint = secondary)
                             }
@@ -429,12 +435,8 @@ fun PreferencesSection(
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
 
-                // Search Radius
                 Column {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("Radio de búsqueda", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = primary)
                         Text("${preferences.searchRadius.toInt()} km", fontSize = 14.sp, color = secondary, fontWeight = FontWeight.Bold)
                     }
@@ -443,22 +445,13 @@ fun PreferencesSection(
                         onValueChange = onRadiusChange,
                         valueRange = 1f..10f,
                         steps = 9,
-                        colors = SliderDefaults.colors(
-                            thumbColor = secondary,
-                            activeTrackColor = secondary,
-                            inactiveTrackColor = secondary.copy(alpha = 0.2f)
-                        )
+                        colors = SliderDefaults.colors(thumbColor = secondary, activeTrackColor = secondary, inactiveTrackColor = secondary.copy(alpha = 0.2f))
                     )
                 }
 
                 HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
 
-                // High Contrast Switch
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Modo Alto Contraste", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = primary)
                         Text("Optimizar lectura bajo el sol", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
@@ -470,17 +463,12 @@ fun PreferencesSection(
                             checkedThumbColor = MaterialTheme.colorScheme.surface,
                             checkedTrackColor = secondary,
                             uncheckedThumbColor = MaterialTheme.colorScheme.surface,
-                            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f) // ◄ CORREGIDO AQUÍ
                         )
                     )
                 }
 
-                // Anonymous Mode Switch
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text("Modo Anónimo", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = primary)
                         Text("Ocultar tu nombre en reportes", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
@@ -492,10 +480,9 @@ fun PreferencesSection(
                             checkedThumbColor = MaterialTheme.colorScheme.surface,
                             checkedTrackColor = secondary,
                             uncheckedThumbColor = MaterialTheme.colorScheme.surface,
-                            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+                            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f) // ◄ CORREGIDO AQUÍ
                         )
-                    )
-                }
+                    )                }
             }
         }
     }
@@ -509,11 +496,7 @@ fun SettingsItem(icon: ImageVector, label: String, textColor: Color) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(1.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
+        Row(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f))
                 Spacer(modifier = Modifier.width(12.dp))
@@ -521,5 +504,27 @@ fun SettingsItem(icon: ImageVector, label: String, textColor: Color) {
             }
             Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), modifier = Modifier.size(16.dp))
         }
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun ProfileScreenRegisteredPreview() {
+    com.aguamap.app.ui.theme.AguaMapTheme { // Usamos tu tema personalizado
+        ProfileScreen(isGuest = false,
+        userName = "Mateo Fernández", // Datos de prueba para el Preview
+        userEmail = "mateo@email.com"
+        )
+    }
+}
+
+@Preview(showBackground = true, showSystemUi = true)
+@Composable
+fun ProfileScreenGuestPreview() {
+    com.aguamap.app.ui.theme.AguaMapTheme { // Usamos tu tema personalizado
+        ProfileScreen(isGuest = true,
+        userName = "Invitado",          // Datos de prueba para el Preview
+        userEmail = ""
+        )
     }
 }
