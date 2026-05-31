@@ -46,6 +46,13 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
         }
     }
 
+    fun addWaterPoint(point: WaterPoint) {
+        viewModelScope.launch {
+            repository.addWaterPoint(point)
+            loadWaterPoints()
+        }
+    }
+
     fun loadDetails(pointId: String) {
         viewModelScope.launch {
             _comments.value = repository.getComments(pointId)

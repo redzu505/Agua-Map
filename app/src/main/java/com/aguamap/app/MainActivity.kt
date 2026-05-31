@@ -34,11 +34,11 @@ class MainActivity : ComponentActivity() {
         val appRepository = AppRepository(localDataSource, remoteDataSource)
 
         // 3. Creamos las instancias de los ViewModels compartiendo el mismo repositorio
+        val userPrefsRepo = UserPreferencesRepository(applicationContext)
         val homeViewModel = HomeViewModel(appRepository)
-        val authViewModel = AuthViewModel(appRepository) // para lo de autenticación
+        val authViewModel = AuthViewModel(appRepository, userPrefsRepo) // para lo de autenticación
 
         setContent {
-            val userPrefsRepo = remember { UserPreferencesRepository(applicationContext) }
             val prefs by userPrefsRepo.userPreferencesFlow.collectAsState(initial = UserPreferences())
             
             AguaMapTheme(highContrast = prefs.isHighContrast) {

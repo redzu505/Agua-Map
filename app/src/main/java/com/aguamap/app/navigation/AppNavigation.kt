@@ -48,6 +48,17 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
                 },
                 onNavigateToAddPoint = {
                     navController.navigate(Screen.AddWaterPoint.route)
+                },
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                },
+                onLogoutClick = {
+                    authViewModel.cerrarSesion()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
                 }
             )
         }*/
@@ -75,6 +86,17 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
                 },
                 onNavigateToAddPoint = {
                     navController.navigate(Screen.AddWaterPoint.route)
+                },
+                onNavigateToLogin = {
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(Screen.Home.route) { inclusive = true }
+                    }
+                },
+                onLogoutClick = {
+                    authViewModel.cerrarSesion()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
                 }
             )
         }
@@ -103,6 +125,12 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Home.route) { inclusive = true }
                     }
+                },
+                onLogoutClick = {
+                    authViewModel.cerrarSesion()
+                    navController.navigate(Screen.Login.route) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
                 }
             )
         }
@@ -124,7 +152,7 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
         }
 
         composable(Screen.AddWaterPoint.route) {
-            AddWaterPointScreen(onBack = { navController.popBackStack() })
+            AddWaterPointScreen(homeViewModel = homeViewModel, onBack = { navController.popBackStack() })
         }
     }
 }

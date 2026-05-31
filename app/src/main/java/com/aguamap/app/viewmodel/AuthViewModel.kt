@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aguamap.app.domain.UsuarioSesion
 import com.aguamap.app.data.repository.AppRepository
+import com.aguamap.app.data.local.UserPreferencesRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,7 +35,10 @@ sealed interface LoginState {
  * CAPA DE VIEWMODEL - AUTENTICACIÓN
  * Gestiona el estado del login y registro de usuarios interactuando con el repositorio.
  */
-class AuthViewModel(private val repository: AppRepository) : ViewModel() {
+class AuthViewModel(
+    private val repository: AppRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
+) : ViewModel() {
 
     // Flujo interno mutable y flujo externo de solo lectura para la UI
     private val _registerState = MutableStateFlow<RegisterState>(RegisterState.Idle)
@@ -160,5 +164,17 @@ class AuthViewModel(private val repository: AppRepository) : ViewModel() {
      */
     fun resetRegisterState() {
         _registerState.value = RegisterState.Idle
+    }
+
+    fun cerrarSesion() {
+        _usuarioLogueado.value = null
+        _isGuest.value = false
+        _loginState.value = LoginState.Idle
+        _registerState.value = RegisterState.Idle
+        
+        // También limpiamos las preferencias locales
+        viewModelScope.launch {
+            userPreferencesRepository.clearAll()
+        }
     }
 }

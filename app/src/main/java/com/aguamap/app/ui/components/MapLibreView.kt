@@ -1,5 +1,6 @@
 package com.aguamap.app.ui.components
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -100,6 +101,7 @@ fun MapLibreView(
                                 locationComponent.activateLocationComponent(
                                     LocationComponentActivationOptions.builder(context, style).build()
                                 )
+                                @SuppressLint("MissingPermission")
                                 locationComponent.isLocationComponentEnabled = true
                                 locationComponent.cameraMode = CameraMode.TRACKING
                                 locationComponent.renderMode = RenderMode.COMPASS

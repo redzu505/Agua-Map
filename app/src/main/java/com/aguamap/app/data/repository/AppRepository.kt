@@ -100,6 +100,10 @@ class AppRepository(private val localDataSource: LocalDataSource, private val re
         }
     }
 
+    suspend fun addWaterPoint(point: WaterPoint) {
+        localDataSource.saveWaterPoint(point)
+    }
+
     suspend fun getComments(pointId: String): List<Comment> {
         return localDataSource.getComments(pointId)
     }

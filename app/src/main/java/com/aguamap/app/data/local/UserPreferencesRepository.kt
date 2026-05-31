@@ -61,4 +61,10 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.IS_ANONYMOUS] = isAnonymous
         }
     }
+
+    suspend fun clearAll() {
+        context.dataStore.edit { preferences ->
+            preferences.clear()
+        }
+    }
 }

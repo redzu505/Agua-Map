@@ -11,20 +11,27 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.res.stringResource
 import com.aguamap.app.R
+import com.aguamap.app.domain.WaterPoint
+import com.aguamap.app.domain.WaterPointStatus
 import com.aguamap.app.domain.WaterPointType
 import com.aguamap.app.util.LocationService
-import androidx.compose.ui.platform.LocalContext
+import com.aguamap.app.viewmodel.HomeViewModel
 import kotlinx.coroutines.launch
 import java.util.Locale
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AddWaterPointScreen(onBack: () -> Unit) {
+fun AddWaterPointScreen(
+    homeViewModel: HomeViewModel,
+    onBack: () -> Unit
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val locationService = remember { LocationService(context) }
@@ -90,7 +97,6 @@ fun AddWaterPointScreen(onBack: () -> Unit) {
                             loc?.let {
                                 latitude = it.latitude
                                 longitude = it.longitude
-                                // En una app real usaríamos geocoder para la dirección
                                 if (address.isBlank()) {
                                     address = context.getString(R.string.location_gps_captured)
                                 }
@@ -118,7 +124,7 @@ fun AddWaterPointScreen(onBack: () -> Unit) {
                     FilterChip(
                         selected = selectedType == type,
                         onClick = { selectedType = type },
-                        label = { Text(type.name, fontSize = 10.sp) },
+                        label = { Text(type.displayName, fontSize = 10.sp) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -136,7 +142,19 @@ fun AddWaterPointScreen(onBack: () -> Unit) {
 
             Button(
                 onClick = { 
-                    // Aquí se guardaría el punto
+                    val newPoint = WaterPoint(
+                        id = UUID.randomUUID().toString(),
+                        name = name,
+                        address = address,
+                        rating = 5.0,
+                        distance = "0m",
+                        hours = if (hours.isBlank()) "24h" else hours,
+                        status = WaterPointStatus.OPERATIVO,
+                        type = selectedType,
+                        latitude = latitude ?: -11.9763,
+                        longitude = longitude ?: -77.0002
+                    )
+                    homeViewModel.addWaterPoint(newPoint)
                     onBack() 
                 },
                 modifier = Modifier.fillMaxWidth(),

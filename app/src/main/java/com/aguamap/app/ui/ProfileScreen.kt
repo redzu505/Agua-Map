@@ -7,6 +7,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Login
+import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -30,10 +34,11 @@ import kotlinx.coroutines.launch
 @Composable
 fun ProfileScreen(
     onBack: () -> Unit = {},
-    isGuest: Boolean = false, // ◄ NUEVO: Controla si es invitado o no
+    isGuest: Boolean = false,
     userName: String,
     userEmail: String,
-    onLoginClick: () -> Unit = {} // ◄ NUEVO: Acción para mandarlo a loguearse
+    onLoginClick: () -> Unit = {},
+    onLogoutClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -43,79 +48,75 @@ fun ProfileScreen(
     val colorScheme = MaterialTheme.colorScheme
 
     Box(modifier = Modifier.fillMaxSize().background(colorScheme.background)) {
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            item { Spacer(modifier = Modifier.height(16.dp)) }
+        if (isGuest) {
+            // VISTA PARA INVITADOS: Centrada y minimalista
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                GuestHeader(onLoginClick = onLoginClick)
+            }
+        } else {
+            // VISTA PARA USUARIOS REGISTRADOS
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                item { Spacer(modifier = Modifier.height(16.dp)) }
 
-            // Cabecera de la pantalla
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = MaterialTheme.colorScheme.primary)
+                item {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = onBack) {
+                            Icon(
+                                Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Back",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Mi Perfil",
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        "Mi Perfil",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // CONDICIONAL: Si es invitado mostramos banner de invitación, si no, sus datos reales
-                if (isGuest) {
-                    GuestHeader(onLoginClick = onLoginClick)
-                } else {
+                    Spacer(modifier = Modifier.height(16.dp))
                     ProfileHeader(userName = userName, userEmail = userEmail)
                 }
-            }
 
-            // Sección de Impacto: Solo se muestra a usuarios registrados
-            if (!isGuest) {
+                item { ImpactSection() }
+
                 item {
-                    ImpactSection()
+                    PreferencesSection(
+                        preferences = userPreferences,
+                        onSectorChange = { scope.launch { repository.updateSector(it) } },
+                        onContrastChange = { scope.launch { repository.updateHighContrast(it) } },
+                        onRadiusChange = { scope.launch { repository.updateRadius(it) } },
+                        onAnonymousChange = { scope.launch { repository.updateAnonymous(it) } }
+                    )
                 }
-            }
 
-            // Preferencias de SJL: ¡Ambos pueden configurarlo! Excelente UX
-            item {
-                PreferencesSection(
-                    preferences = userPreferences,
-                    onSectorChange = { scope.launch { repository.updateSector(it) } },
-                    onContrastChange = { scope.launch { repository.updateHighContrast(it) } },
-                    onRadiusChange = { scope.launch { repository.updateRadius(it) } },
-                    onAnonymousChange = { scope.launch { repository.updateAnonymous(it) } }
-                )
-            }
+                item { SavedPointsSection() }
 
-            // Puntos Guardados: Solo para usuarios registrados
-            if (!isGuest) {
                 item {
-                    SavedPointsSection()
+                    SettingsSection(isGuest = isGuest, onLoginClick = onLoginClick, onLogoutClick = onLogoutClick)
                 }
-            }
 
-            // Ajustes y Botón de salir/entrar
-            item {
-                SettingsSection(isGuest = isGuest, onLoginClick = onLoginClick, onLogoutClick = onBack)
+                item { Spacer(modifier = Modifier.height(32.dp)) }
             }
-
-            item { Spacer(modifier = Modifier.height(32.dp)) }
         }
     }
 }
 
-/**
- * NUEVO COMPONENTE: Cabecera amigable para cuando navegas como Invitado
- */
 @Composable
 fun GuestHeader(onLoginClick: () -> Unit) {
     val primary = MaterialTheme.colorScheme.primary
@@ -123,42 +124,50 @@ fun GuestHeader(onLoginClick: () -> Unit) {
 
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(2.dp)
+        elevation = CardDefaults.cardElevation(4.dp)
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(32.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                Icons.Default.AccountCircle,
-                contentDescription = null,
-                modifier = Modifier.size(72.dp),
-                tint = primary.copy(alpha = 0.2f)
+            Surface(
+                modifier = Modifier.size(80.dp),
+                shape = CircleShape,
+                color = primary.copy(alpha = 0.1f)
+            ) {
+                Icon(
+                    Icons.Default.AccountCircle,
+                    contentDescription = null,
+                    modifier = Modifier.padding(16.dp),
+                    tint = primary
+                )
+            }
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                "¡Bienvenido a AguaMap!",
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+                color = primary,
+                textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                "Modo Invitado",
-                fontSize = 20.sp,
-                fontWeight = FontWeight.Bold,
-                color = primary
-            )
-            Text(
-                "Inicia sesión para registrar tu consumo de agua potable, reportar nuevas fuentes y unirte a la comunidad de SJL.",
-                fontSize = 14.sp,
-                color = primary.copy(alpha = 0.6f),
+                "Inicia sesión para registrar tu consumo de agua, reportar nuevas fuentes y ser parte de la comunidad de San Juan de Lurigancho.",
+                fontSize = 15.sp,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(vertical = 8.dp)
+                lineHeight = 22.sp
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(32.dp))
             Button(
                 onClick = onLoginClick,
                 colors = ButtonDefaults.buttonColors(containerColor = secondary),
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
-                Text("Iniciar Sesión / Registrarse", fontWeight = FontWeight.Bold)
+                Text("Iniciar Sesión / Registrarse", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp)
             }
         }
     }
@@ -215,7 +224,6 @@ fun ProfileHeader(userName: String, userEmail: String) {
             fontWeight = FontWeight.Bold,
             color = primary
         )
-        // Añadimos el correo debajo del nombre, BORRAR DE SER NECESARIO
         Text(
             text = userEmail,
             fontSize = 14.sp,
@@ -240,13 +248,25 @@ fun ImpactSection() {
     val secondary = MaterialTheme.colorScheme.secondary
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text("Tu Impacto", color = primary.copy(alpha = 0.6f), fontSize = 16.sp, fontWeight = FontWeight.Medium)
+        Text("Tu Actividad", color = primary.copy(alpha = 0.6f), fontSize = 16.sp, fontWeight = FontWeight.Medium)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            ImpactCard(modifier = Modifier.weight(1f), icon = Icons.Default.WaterDrop, value = "42L", label = "Agua consumida", accentColor = primary)
-            ImpactCard(modifier = Modifier.weight(1f), icon = Icons.Default.Recycling, value = "84", label = "Botellas evitadas", accentColor = secondary)
+            ImpactCard(
+                modifier = Modifier.weight(1f), 
+                icon = Icons.Default.AddLocation, 
+                value = "12",
+                label = "Puntos reportados", 
+                accentColor = primary
+            )
+            ImpactCard(
+                modifier = Modifier.weight(1f), 
+                icon = Icons.Default.AddCircle,
+                value = "5",
+                label = "Puntos sugeridos", 
+                accentColor = secondary
+            )
         }
 
         Card(
@@ -256,21 +276,27 @@ fun ImpactSection() {
             elevation = CardDefaults.cardElevation(2.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth().padding(16.dp)
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = secondary.copy(alpha = 0.1f), shape = RoundedCornerShape(8.dp), modifier = Modifier.size(48.dp)) {
-                        Icon(Icons.Default.AddLocationAlt, contentDescription = null, tint = secondary, modifier = Modifier.padding(12.dp))
-                    }
-                    Spacer(modifier = Modifier.width(16.dp))
-                    Column {
-                        Text("12", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = primary)
-                        Text("Puntos reportados", fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                Surface(
+                    color = Color(0xFF4CAF50).copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            Icons.AutoMirrored.Filled.Chat, 
+                            contentDescription = null, 
+                            tint = Color(0xFF4CAF50)
+                        )
                     }
                 }
-                Icon(Icons.Default.ChevronRight, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f))
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text("24", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = primary)
+                    Text("Comentarios realizados", fontSize = 14.sp, color = primary.copy(alpha = 0.6f))
+                }
             }
         }
     }
@@ -346,34 +372,36 @@ fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
 }
 
 @Composable
-fun SettingsSection(
-    isGuest: Boolean, // ◄ ADAPTADO
-    onLoginClick: () -> Unit, // ◄ ADAPTADO
-    onLogoutClick: () -> Unit // ◄ ADAPTADO
-) {
+fun SettingsSection(isGuest: Boolean, onLoginClick: () -> Unit, onLogoutClick: () -> Unit) {
     val primary = MaterialTheme.colorScheme.primary
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SettingsItem(Icons.Default.Settings, "Ajustes", primary)
         SettingsItem(Icons.Default.Shield, "Privacidad", primary)
         Spacer(modifier = Modifier.height(8.dp))
 
-        // El último botón cambia dinámicamente según el tipo de usuario
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .clickable { if (isGuest) onLoginClick() else onLogoutClick() }
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+        // Botón de Acción Principal (Iniciar o Cerrar Sesión)
+        Surface(
+            onClick = { 
+                println("AGUAMAP_DEBUG: Acción de sesión disparada (isGuest=$isGuest)")
+                if (isGuest) onLoginClick() else onLogoutClick() 
+            },
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            color = if (isGuest) MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f) else Color(0xFFD32F2F).copy(alpha = 0.1f)
         ) {
-            if (isGuest) {
-                Icon(Icons.Default.Login, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
-                Spacer(modifier = Modifier.width(12.dp))
-                Text("Iniciar Sesión", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold)
-            } else {
-                Icon(Icons.Default.Logout, contentDescription = null, tint = Color(0xFFD32F2F))
-                Spacer(modifier = Modifier.width(12.dp))
-                Text("Cerrar Sesión", color = Color(0xFFD32F2F), fontWeight = FontWeight.Bold)
+            Row(
+                modifier = Modifier.padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (isGuest) {
+                    Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Iniciar Sesión", color = MaterialTheme.colorScheme.secondary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                } else {
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null, tint = Color(0xFFD32F2F))
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text("Cerrar Sesión", color = Color(0xFFD32F2F), fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
             }
         }
     }
@@ -448,41 +476,6 @@ fun PreferencesSection(
                         colors = SliderDefaults.colors(thumbColor = secondary, activeTrackColor = secondary, inactiveTrackColor = secondary.copy(alpha = 0.2f))
                     )
                 }
-
-                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Modo Alto Contraste", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = primary)
-                        Text("Optimizar lectura bajo el sol", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                    }
-                    Switch(
-                        checked = preferences.isHighContrast,
-                        onCheckedChange = onContrastChange,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.surface,
-                            checkedTrackColor = secondary,
-                            uncheckedThumbColor = MaterialTheme.colorScheme.surface,
-                            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f) // ◄ CORREGIDO AQUÍ
-                        )
-                    )
-                }
-
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text("Modo Anónimo", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = primary)
-                        Text("Ocultar tu nombre en reportes", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
-                    }
-                    Switch(
-                        checked = preferences.isAnonymous,
-                        onCheckedChange = onAnonymousChange,
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.surface,
-                            checkedTrackColor = secondary,
-                            uncheckedThumbColor = MaterialTheme.colorScheme.surface,
-                            uncheckedTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f) // ◄ CORREGIDO AQUÍ
-                        )
-                    )                }
             }
         }
     }
@@ -510,21 +503,15 @@ fun SettingsItem(icon: ImageVector, label: String, textColor: Color) {
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun ProfileScreenRegisteredPreview() {
-    com.aguamap.app.ui.theme.AguaMapTheme { // Usamos tu tema personalizado
-        ProfileScreen(isGuest = false,
-        userName = "Mateo Fernández", // Datos de prueba para el Preview
-        userEmail = "mateo@email.com"
-        )
+    com.aguamap.app.ui.theme.AguaMapTheme {
+        ProfileScreen(isGuest = false, userName = "Mateo Fernández", userEmail = "mateo@email.com")
     }
 }
 
 @Preview(showBackground = true, showSystemUi = true)
 @Composable
 fun ProfileScreenGuestPreview() {
-    com.aguamap.app.ui.theme.AguaMapTheme { // Usamos tu tema personalizado
-        ProfileScreen(isGuest = true,
-        userName = "Invitado",          // Datos de prueba para el Preview
-        userEmail = ""
-        )
+    com.aguamap.app.ui.theme.AguaMapTheme {
+        ProfileScreen(isGuest = true, userName = "Invitado", userEmail = "")
     }
 }

@@ -46,7 +46,9 @@ fun HomeScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToCommunity: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
-    onNavigateToAddPoint: () -> Unit
+    onNavigateToAddPoint: () -> Unit,
+    onNavigateToLogin: () -> Unit,
+    onLogoutClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -91,16 +93,35 @@ fun HomeScreen(
     val secondary = MaterialTheme.colorScheme.secondary
     val background = MaterialTheme.colorScheme.background
 
-    val waterPoints = remember(userLocation, waterPointsState) {
-        waterPointsState.map { point ->
-            val distance = userLocation?.let { loc ->
-                LocationUtils.calculateDistance(
-                    loc.latitude, loc.longitude,
-                    point.latitude, point.longitude
-                )
+    val waterPoints = remember(userLocation, waterPointsState, searchQuery, selectedFilter) {
+        waterPointsState
+            .map { point ->
+                val distKm = userLocation?.let { loc ->
+                    LocationUtils.calculateDistance(
+                        loc.latitude, loc.longitude,
+                        point.latitude, point.longitude
+                    )
+                }
+                point to distKm
             }
-            point.copy(distance = distance?.let { LocationUtils.formatDistance(it) } ?: "---")
-        }.sortedBy { it.distance }
+            .filter { (point, _) ->
+                val matchesSearch = point.name.contains(searchQuery, ignoreCase = true) || 
+                                   point.address.contains(searchQuery, ignoreCase = true)
+                
+                val matchesFilter = when (selectedFilter) {
+                    "Todos" -> true
+                    "Fuentes" -> point.type == WaterPointType.FUENTE
+                    "Pozos" -> point.type == WaterPointType.POZO
+                    "Filtrada" -> point.type == WaterPointType.FILTRADA
+                    "Grifo" -> point.type == WaterPointType.GRIFO
+                    else -> false
+                }
+                matchesSearch && matchesFilter
+            }
+            .sortedBy { (_, distKm) -> distKm ?: Double.MAX_VALUE }
+            .map { (point, distKm) ->
+                point.copy(distance = distKm?.let { LocationUtils.formatDistance(it) } ?: "---")
+            }
     }
 
     Scaffold(
@@ -108,20 +129,21 @@ fun HomeScreen(
             if (selectedTab == "Points") {
                 TopAppBar(
                     title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.WaterDrop,
-                                contentDescription = null,
-                                tint = secondary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
+                        Column {
                             Text(
-                                "AguaMap",
+                                if (isGuest) "AguaMap SJL" else "¡Hola, $userName!",
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 24.sp,
+                                fontSize = 20.sp,
                                 color = primary
                             )
+                            if (!isGuest) {
+                                Text(
+                                    "Guardián del Agua",
+                                    fontSize = 12.sp,
+                                    color = secondary,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     },
                     actions = {
@@ -268,17 +290,23 @@ fun HomeScreen(
                         }
 
                         // Water Points List
-                        LazyColumn(
-                            verticalArrangement = Arrangement.spacedBy(16.dp),
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            items(waterPoints) { point ->
-                                WaterPointCard(
-                                    point = point,
-                                    onClick = { onNavigateToDetail(point.id) }
-                                )
+                        if (waterPoints.isEmpty() && !isLoading) {
+                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                                Text("No se encontraron puntos de agua", color = Color.Gray)
                             }
-                            item { Spacer(modifier = Modifier.height(80.dp)) }
+                        } else {
+                            LazyColumn(
+                                verticalArrangement = Arrangement.spacedBy(16.dp),
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                items(waterPoints) { point ->
+                                    WaterPointCard(
+                                        point = point,
+                                        onClick = { onNavigateToDetail(point.id) }
+                                    )
+                                }
+                                item { Spacer(modifier = Modifier.height(80.dp)) }
+                            }
                         }
                     }
                 }
@@ -286,7 +314,14 @@ fun HomeScreen(
                     CommunityScreen(homeViewModel = homeViewModel, onBack = { selectedTab = "Points" })
                 }
                 "Profile" -> {
-                    ProfileScreen(isGuest = isGuest, userName = userName, userEmail = userEmail, onBack = { selectedTab = "Points" })
+                    ProfileScreen(
+                        isGuest = isGuest,
+                        userName = userName,
+                        userEmail = userEmail,
+                        onBack = { selectedTab = "Points" },
+                        onLoginClick = onNavigateToLogin,
+                        onLogoutClick = onLogoutClick
+                    )
                 }
                 else -> {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
