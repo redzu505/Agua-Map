@@ -127,7 +127,24 @@ class AuthViewModel(
                 _isGuest.value = false
                 _loginState.value = LoginState.Success
             }.onFailure { excepcion ->
-                _loginState.value = LoginState.Error(excepcion.message ?: "Correo o contraseña incorrectos")
+                // Mapeo de errores para mostrar mensajes limpios en español
+                val errorMsg = when {
+                    // Errores de red
+                    excepcion is java.net.UnknownHostException || 
+                    excepcion is java.net.ConnectException ||
+                    excepcion.message?.contains("timeout", ignoreCase = true) == true -> 
+                        "Error de conexión. Inténtalo de nuevo."
+
+                    // Errores de credenciales (Supabase / GoTrue)
+                    excepcion.message?.contains("credentials", ignoreCase = true) == true ||
+                    excepcion.message?.contains("invalid", ignoreCase = true) == true ||
+                    excepcion.message?.contains("auth", ignoreCase = true) == true -> 
+                        "Correo o contraseña erróneos."
+
+                    // Fallback para cualquier otro error de autenticación
+                    else -> "correo o contraseña erróneos."
+                }
+                _loginState.value = LoginState.Error(errorMsg)
             }
         }
     }
