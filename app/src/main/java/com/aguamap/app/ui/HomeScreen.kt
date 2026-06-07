@@ -43,6 +43,8 @@ fun HomeScreen(
     isGuest: Boolean,
     userName: String,
     userEmail: String,
+    userPhone: String = "",
+    onSaveProfile: (String, String) -> Unit = { _, _ -> },
     onNavigateToProfile: () -> Unit,
     onNavigateToCommunity: () -> Unit,
     onNavigateToDetail: (String) -> Unit,
@@ -209,7 +211,9 @@ fun HomeScreen(
             }
         },
         floatingActionButton = {
-            if (selectedTab == "Points" || selectedTab == "Map") {
+            // Solo los usuarios registrados pueden sugerir nuevos puntos.
+            // Los invitados no ven el botón "+" (solo visualizan y filtran).
+            if (!isGuest && (selectedTab == "Points" || selectedTab == "Map")) {
                 FloatingActionButton(
                     onClick = onNavigateToAddPoint,
                     containerColor = secondary,
@@ -318,9 +322,11 @@ fun HomeScreen(
                         isGuest = isGuest,
                         userName = userName,
                         userEmail = userEmail,
+                        userPhone = userPhone,
                         onBack = { selectedTab = "Points" },
                         onLoginClick = onNavigateToLogin,
-                        onLogoutClick = onLogoutClick
+                        onLogoutClick = onLogoutClick,
+                        onSaveProfile = onSaveProfile
                     )
                 }
                 else -> {

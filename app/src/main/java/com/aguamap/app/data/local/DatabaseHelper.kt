@@ -14,7 +14,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
 
     companion object {
         private const val DATABASE_NAME = "aguamap_db"
-        private const val DATABASE_VERSION = 1
+        private const val DATABASE_VERSION = 2
 
         // Tablas
         const val TABLE_PUNTOS = "puntos_agua"
@@ -42,6 +42,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         const val COL_R_POINT_ID = "punto_id"
         const val COL_R_TYPE = "tipo_reporte"
         const val COL_R_DESC = "descripcion"
+        const val COL_R_IMAGE = "imagen_url"
         const val COL_R_SYNCED = "sincronizado"
 
         // Columnas Comentarios
@@ -83,6 +84,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                 $COL_R_POINT_ID TEXT,
                 $COL_R_TYPE TEXT,
                 $COL_R_DESC TEXT,
+                $COL_R_IMAGE TEXT,
                 $COLUMN_DATE TEXT,
                 $COL_R_SYNCED INTEGER DEFAULT 0
             )
@@ -209,6 +211,7 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
             put(COL_R_POINT_ID, report.pointId)
             put(COL_R_TYPE, report.type.name)
             put(COL_R_DESC, report.description)
+            put(COL_R_IMAGE, report.imageUrl)
             put(COLUMN_DATE, report.date)
             put(COL_R_SYNCED, 0)
         }
@@ -234,7 +237,8 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
                         pointId = getString(getColumnIndexOrThrow(COL_R_POINT_ID)),
                         type = ReportType.valueOf(getString(getColumnIndexOrThrow(COL_R_TYPE))),
                         description = getString(getColumnIndexOrThrow(COL_R_DESC)),
-                        date = getString(getColumnIndexOrThrow(COLUMN_DATE))
+                        date = getString(getColumnIndexOrThrow(COLUMN_DATE)),
+                        imageUrl = getString(getColumnIndexOrThrow(COL_R_IMAGE))
                     )
                 )
             }

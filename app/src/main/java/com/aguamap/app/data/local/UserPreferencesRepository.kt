@@ -19,6 +19,7 @@ class UserPreferencesRepository(private val context: Context) {
         val IS_HIGH_CONTRAST: Preferences.Key<Boolean> = booleanPreferencesKey("is_high_contrast")
         val SEARCH_RADIUS: Preferences.Key<Float> = floatPreferencesKey("search_radius")
         val IS_ANONYMOUS: Preferences.Key<Boolean> = booleanPreferencesKey("is_anonymous")
+        val IS_DARK_MODE: Preferences.Key<Boolean> = booleanPreferencesKey("is_dark_mode")
     }
 
     val userPreferencesFlow: Flow<UserPreferences> = context.dataStore.data
@@ -34,7 +35,8 @@ class UserPreferencesRepository(private val context: Context) {
                 selectedSector = preferences[PreferencesKeys.SELECTED_SECTOR] ?: "Todos",
                 isHighContrast = preferences[PreferencesKeys.IS_HIGH_CONTRAST] ?: false,
                 searchRadius = preferences[PreferencesKeys.SEARCH_RADIUS] ?: 1.0f,
-                isAnonymous = preferences[PreferencesKeys.IS_ANONYMOUS] ?: false
+                isAnonymous = preferences[PreferencesKeys.IS_ANONYMOUS] ?: false,
+                isDarkMode = preferences[PreferencesKeys.IS_DARK_MODE] ?: false
             )
         }
 
@@ -59,6 +61,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun updateAnonymous(isAnonymous: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.IS_ANONYMOUS] = isAnonymous
+        }
+    }
+
+    suspend fun updateDarkMode(isDarkMode: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.IS_DARK_MODE] = isDarkMode
         }
     }
 

@@ -33,6 +33,17 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
     private val _news = MutableStateFlow<List<CommunityNews>>(emptyList())
     val news: StateFlow<List<CommunityNews>> = _news
 
+    // Nombre del usuario logueado, usado como autor de los comentarios.
+    // Si es invitado o no hay nombre, usamos un valor genérico.
+    private var currentUserName: String = "Vecino SJL"
+
+    /**
+     * Lo llama la navegación cuando entra al Home para saber quién comenta.
+     */
+    fun setCurrentUser(name: String?) {
+        currentUserName = if (name.isNullOrBlank()) "Vecino SJL" else name
+    }
+
     fun loadWaterPoints() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -64,7 +75,7 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
         viewModelScope.launch {
             val comment = Comment(
                 id = UUID.randomUUID().toString(),
-                author = "Vecino SJL",
+                author = currentUserName,
                 content = content,
                 rating = rating,
                 date = "Hoy"
@@ -74,9 +85,13 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
         }
     }
 
-    fun addReport(report: WaterPointReport) {
+    /**
+     * Agrega un reporte. Opcionalmente con una foto (bytes leídos desde la UI)
+     * que se subirá a Supabase Storage dentro del repositorio.
+     */
+    fun addReport(report: WaterPointReport, imageBytes: ByteArray? = null) {
         viewModelScope.launch {
-            repository.addReport(report)
+            repository.addReport(report, imageBytes)
             loadDetails(report.pointId)
         }
     }

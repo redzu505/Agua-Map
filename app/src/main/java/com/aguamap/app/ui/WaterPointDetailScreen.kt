@@ -1,6 +1,9 @@
 package com.aguamap.app.ui
 
 import android.location.Location
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -41,6 +44,7 @@ import java.util.UUID
 fun WaterPointDetailScreen(
     pointId: String,
     homeViewModel: HomeViewModel,
+    isGuest: Boolean = false,
     onBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -80,7 +84,15 @@ fun WaterPointDetailScreen(
         ReportDialog(
             pointName = point.name,
             onDismiss = { showReportDialog = false },
-            onSend = { type, desc ->
+            onSend = { type, desc, imageUri ->
+                // Si el usuario adjuntó una foto, leemos sus bytes para subirlos a Storage
+                val imageBytes = imageUri?.let { uri ->
+                    try {
+                        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                    } catch (e: Exception) {
+                        null
+                    }
+                }
                 homeViewModel.addReport(
                     WaterPointReport(
                         id = UUID.randomUUID().toString(),
@@ -88,7 +100,8 @@ fun WaterPointDetailScreen(
                         type = type,
                         description = desc,
                         date = "Hoy"
-                    )
+                    ),
+                    imageBytes = imageBytes
                 )
                 showReportDialog = false
             }
@@ -186,6 +199,7 @@ fun WaterPointDetailScreen(
             // SECCIÓN DE COMENTARIOS
             CommentSection(
                 comments = comments,
+                isGuest = isGuest,
                 onAddComment = { text ->
                     homeViewModel.addComment(pointId, text, 5)
                 }
@@ -193,16 +207,47 @@ fun WaterPointDetailScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Button(
-                onClick = { showReportDialog = true },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = secondary)
-            ) {
-                Icon(Icons.Default.Report, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(stringResource(R.string.btn_report_problem))
+            if (!isGuest) {
+                // Solo usuarios registrados pueden reportar problemas
+                Button(
+                    onClick = { showReportDialog = true },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = secondary)
+                ) {
+                    Icon(Icons.Default.Report, contentDescription = null)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(stringResource(R.string.btn_report_problem))
+                }
+            } else {
+                // Aviso para invitados
+                GuestActionHint(stringResource(R.string.guest_hint_report))
             }
+        }
+    }
+}
+
+/**
+ * Mensaje que se muestra a los invitados cuando una acción está bloqueada.
+ */
+@Composable
+fun GuestActionHint(message: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(Icons.Default.Lock, contentDescription = null, tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f))
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                message,
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+            )
         }
     }
 }
@@ -222,12 +267,27 @@ fun ReportsSection(reports: List<WaterPointReport>) {
                 colors = CardDefaults.cardColors(containerColor = Color(0xFFFDEDEC)),
                 shape = RoundedCornerShape(8.dp)
             ) {
-                Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(report.type.displayName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFFC0392B))
-                        Text(report.description, fontSize = 13.sp, color = Color.DarkGray)
+                Column {
+                    Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(report.type.displayName, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = Color(0xFFC0392B))
+                            Text(report.description, fontSize = 13.sp, color = Color.DarkGray)
+                        }
+                        Text(report.date, fontSize = 11.sp, color = Color.Gray)
                     }
-                    Text(report.date, fontSize = 11.sp, color = Color.Gray)
+                    // Si el reporte trae foto adjunta (subida a Supabase Storage), la mostramos
+                    if (!report.imageUrl.isNullOrBlank()) {
+                        AsyncImage(
+                            model = report.imageUrl,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .padding(horizontal = 12.dp)
+                                .padding(bottom = 12.dp),
+                            contentScale = ContentScale.Crop
+                        )
+                    }
                 }
             }
         }
@@ -237,6 +297,7 @@ fun ReportsSection(reports: List<WaterPointReport>) {
 @Composable
 fun CommentSection(
     comments: List<Comment>,
+    isGuest: Boolean = false,
     onAddComment: (String) -> Unit
 ) {
     var newCommentText by remember { mutableStateOf("") }
@@ -244,7 +305,7 @@ fun CommentSection(
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.label_comments), fontWeight = FontWeight.Bold, fontSize = 18.sp, color = primary)
-        
+
         if (comments.isEmpty()) {
             Text(stringResource(R.string.label_no_comments), color = Color.Gray, fontSize = 14.sp)
         } else {
@@ -253,23 +314,28 @@ fun CommentSection(
             }
         }
 
-        OutlinedTextField(
-            value = newCommentText,
-            onValueChange = { newCommentText = it },
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(stringResource(R.string.label_share_experience), fontSize = 14.sp) },
-            shape = RoundedCornerShape(12.dp),
-            trailingIcon = {
-                IconButton(onClick = { 
-                    if (newCommentText.isNotBlank()) {
-                        onAddComment(newCommentText)
-                        newCommentText = ""
+        if (!isGuest) {
+            // Solo usuarios registrados pueden comentar
+            OutlinedTextField(
+                value = newCommentText,
+                onValueChange = { newCommentText = it },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(stringResource(R.string.label_share_experience), fontSize = 14.sp) },
+                shape = RoundedCornerShape(12.dp),
+                trailingIcon = {
+                    IconButton(onClick = {
+                        if (newCommentText.isNotBlank()) {
+                            onAddComment(newCommentText)
+                            newCommentText = ""
+                        }
+                    }) {
+                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.btn_publish), tint = primary)
                     }
-                }) {
-                    Icon(Icons.AutoMirrored.Filled.Send, contentDescription = stringResource(R.string.btn_publish), tint = primary)
                 }
-            }
-        )
+            )
+        } else {
+            GuestActionHint(stringResource(R.string.guest_hint_comment))
+        }
     }
 }
 
@@ -305,16 +371,22 @@ fun CommentItem(comment: Comment) {
 fun ReportDialog(
     pointName: String,
     onDismiss: () -> Unit,
-    onSend: (ReportType, String) -> Unit
+    onSend: (ReportType, String, Uri?) -> Unit
 ) {
     var selectedType by remember { mutableStateOf<ReportType?>(null) }
     var description by remember { mutableStateOf("") }
+    var imageUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Selector de imagen de la galería del teléfono
+    val imagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri -> imageUri = uri }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             Button(
-                onClick = { selectedType?.let { onSend(it, description) } },
+                onClick = { selectedType?.let { onSend(it, description, imageUri) } },
                 enabled = selectedType != null && description.isNotBlank(),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE67E22)),
                 shape = RoundedCornerShape(8.dp)
@@ -366,6 +438,33 @@ fun ReportDialog(
                     shape = RoundedCornerShape(8.dp),
                     maxLines = 3
                 )
+
+                // --- Adjuntar foto del problema (opcional) ---
+                Text(stringResource(R.string.report_label_photo), fontWeight = FontWeight.Bold)
+                if (imageUri != null) {
+                    // Vista previa de la foto seleccionada
+                    AsyncImage(
+                        model = imageUri,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(140.dp),
+                        contentScale = ContentScale.Crop
+                    )
+                    TextButton(onClick = { imageUri = null }) {
+                        Text(stringResource(R.string.report_remove_photo), color = Color.Gray)
+                    }
+                } else {
+                    OutlinedButton(
+                        onClick = { imagePicker.launch("image/*") },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.report_attach_photo))
+                    }
+                }
             }
         }
     )
