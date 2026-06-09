@@ -14,9 +14,9 @@ val localProperties = Properties().apply {
     }
 }
 val supabaseUrl: String =
-    localProperties.getProperty("SUPABASE_URL") ?: "https://ivivwimqhgkdmdygdwns.supabase.co/"
+    localProperties.getProperty("SUPABASE_URL") ?: ""
 val supabaseAnonKey: String =
-    localProperties.getProperty("SUPABASE_ANON_KEY") ?: "sb_publishable_45XgBmKYWXiYz_tn2V8uOg_VK6OsUe0"
+    localProperties.getProperty("SUPABASE_ANON_KEY") ?: ""
 
 android {
     namespace = "com.aguamap.app"

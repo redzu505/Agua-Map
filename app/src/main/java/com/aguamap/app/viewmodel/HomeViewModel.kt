@@ -37,6 +37,14 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
     // Si es invitado o no hay nombre, usamos un valor genérico.
     private var currentUserName: String = "Vecino SJL"
 
+    // Estado para la ruta activa en el mapa
+    private val _routeDestination = MutableStateFlow<WaterPoint?>(null)
+    val routeDestination: StateFlow<WaterPoint?> = _routeDestination
+
+    fun setRouteDestination(point: WaterPoint?) {
+        _routeDestination.value = point
+    }
+
     /**
      * Lo llama la navegación cuando entra al Home para saber quién comenta.
      */

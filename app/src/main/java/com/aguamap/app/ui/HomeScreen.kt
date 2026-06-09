@@ -34,6 +34,7 @@ import com.aguamap.app.util.LocationService
 import com.aguamap.app.util.LocationUtils
 import com.aguamap.app.viewmodel.HomeViewModel
 import androidx.compose.ui.platform.LocalContext
+import org.maplibre.android.geometry.LatLng
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,6 +72,7 @@ fun HomeScreen(
 
     val waterPointsState by homeViewModel.waterPoints.collectAsState()
     val isLoading by homeViewModel.isLoading.collectAsState()
+    val routeDestination by homeViewModel.routeDestination.collectAsState()
 
     LaunchedEffect(Unit) {
         homeViewModel.loadWaterPoints()
@@ -90,6 +92,13 @@ fun HomeScreen(
     val filters = listOf("Todos", "Fuentes", "Pozos", "Filtrada", "Grifo")
     var selectedFilter by remember { mutableStateOf("Todos") }
     var selectedTab by remember { mutableStateOf("Points") }
+
+    // Si se asigna un destino de ruta desde fuera, cambiamos a la pestaña de Mapa
+    LaunchedEffect(routeDestination) {
+        if (routeDestination != null) {
+            selectedTab = "Map"
+        }
+    }
 
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
@@ -232,6 +241,8 @@ fun HomeScreen(
                     MapLibreView(
                         modifier = Modifier.fillMaxSize(),
                         waterPoints = waterPoints,
+                        userLocation = userLocation?.let { LatLng(it.latitude, it.longitude) },
+                        routeDestination = routeDestination,
                         onMarkerClick = onNavigateToDetail
                     )
                 }

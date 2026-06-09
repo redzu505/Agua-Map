@@ -207,6 +207,24 @@ fun WaterPointDetailScreen(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            // BOTÓN DE RUTA POR CALLES (OSRM)
+            Button(
+                onClick = {
+                    homeViewModel.setRouteDestination(point)
+                    onBack()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Icon(Icons.Default.Directions, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Ver ruta por calles")
+            }
+
             if (!isGuest) {
                 // Solo usuarios registrados pueden reportar problemas
                 Button(

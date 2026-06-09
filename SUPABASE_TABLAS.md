@@ -249,8 +249,8 @@ La app ahora lee la URL y la API key desde `local.properties` (que **no** se sub
 Añade estas dos líneas a tu archivo `local.properties` (en la raíz del proyecto):
 
 ```properties
-SUPABASE_URL=https://ivivwimqhgkdmdygdwns.supabase.co/
-SUPABASE_ANON_KEY=sb_publishable_45XgBmKYWXiYz_tn2V8uOg_VK6OsUe0
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
 ```
 
 > Si no las pones, la app usa por defecto las que ya tenías (no se rompe nada). Pero
