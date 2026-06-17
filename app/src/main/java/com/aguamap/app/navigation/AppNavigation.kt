@@ -86,6 +86,7 @@ fun AppNavigation(
             HomeScreen(
                 homeViewModel = homeViewModel,
                 isGuest = isGuestUser, // Le enviamos el estado al HomeScreen
+                isAdmin = usuario?.rol == "admin", // Solo el admin puede crear puntos
                 userName = usuario?.nombre ?: "Usuario",   // ◄ NUEVO: Si es nulo (invitado), usa "Usuario" por defecto
                 userEmail = usuario?.email ?: "",           // ◄ NUEVO: Si es nulo, queda vacío
                 userPhone = usuario?.telefono ?: "",         // ◄ Para precargar el editor de perfil
@@ -123,6 +124,11 @@ fun AppNavigation(
             //Obtenemos el usuario aquí también para la ruta directa
             val usuario = authViewModel.usuarioLogueado.collectAsState().value
 
+            // Puntos guardados (favoritos) resueltos a sus puntos de agua
+            val favoritos = homeViewModel.favoritos.collectAsState().value
+            val puntos = homeViewModel.waterPoints.collectAsState().value
+            val savedPoints = puntos.filter { it.id in favoritos }
+
             //pruebas: BORRRAR LINEA LN
 
             println("AGUAMAP_DEBUG: El perfil recibió el argumento isGuest = $isGuest")
@@ -132,7 +138,11 @@ fun AppNavigation(
                 userName = usuario?.nombre ?: "Usuario", // Pasamos el nombre real o default
                 userEmail = usuario?.email ?: "",       // Pasamos el correo real o vacío
                 userPhone = usuario?.telefono ?: "",     // Para precargar el editor de perfil
+                savedPoints = savedPoints,
                 onSaveProfile = { nombre, telefono -> authViewModel.actualizarDatosUsuario(nombre, telefono) },
+                onNavigateToDetail = { pointId ->
+                    navController.navigate(Screen.WaterPointDetail.createRoute(pointId))
+                },
                 onBack = { navController.popBackStack() },
                 onLoginClick = {
                     // Si es invitado y presiona iniciar sesión, lo regresamos a la pantalla de Login
@@ -150,7 +160,13 @@ fun AppNavigation(
         }
 
         composable("community") {
-            CommunityScreen(homeViewModel = homeViewModel, onBack = { navController.popBackStack() })
+            CommunityScreen(
+                homeViewModel = homeViewModel,
+                onBack = { navController.popBackStack() },
+                onNavigateToDetail = { pointId ->
+                    navController.navigate(Screen.WaterPointDetail.createRoute(pointId))
+                }
+            )
         }
 
         composable(

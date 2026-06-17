@@ -7,6 +7,8 @@ import com.aguamap.app.domain.Comment
 import com.aguamap.app.domain.CommunityNews
 import com.aguamap.app.domain.WaterPoint
 import com.aguamap.app.domain.WaterPointReport
+import com.aguamap.app.util.DateUtils
+import com.aguamap.app.util.ModeracionPalabras
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -33,6 +35,34 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
     private val _news = MutableStateFlow<List<CommunityNews>>(emptyList())
     val news: StateFlow<List<CommunityNews>> = _news
 
+    // Reportes recientes de toda la comunidad (pantalla Comunidad)
+    private val _recentReports = MutableStateFlow<List<WaterPointReport>>(emptyList())
+    val recentReports: StateFlow<List<WaterPointReport>> = _recentReports
+
+    // IDs de los puntos guardados (favoritos) del usuario
+    private val _favoritos = MutableStateFlow<Set<String>>(emptySet())
+    val favoritos: StateFlow<Set<String>> = _favoritos
+
+    fun loadFavoritos() {
+        viewModelScope.launch {
+            _favoritos.value = repository.getFavoritos()
+        }
+    }
+
+    /**
+     * Marca/desmarca un punto como guardado y actualiza el estado al instante.
+     */
+    fun toggleFavorito(pointId: String) {
+        viewModelScope.launch {
+            val ahoraEsFavorito = repository.toggleFavorito(pointId)
+            _favoritos.value = if (ahoraEsFavorito) {
+                _favoritos.value + pointId
+            } else {
+                _favoritos.value - pointId
+            }
+        }
+    }
+
     // Nombre del usuario logueado, usado como autor de los comentarios.
     // Si es invitado o no hay nombre, usamos un valor genérico.
     private var currentUserName: String = "Vecino SJL"
@@ -53,6 +83,7 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
     }
 
     fun loadWaterPoints() {
+        loadFavoritos() // cargamos también los puntos guardados del usuario
         viewModelScope.launch {
             _isLoading.value = true
             try {
@@ -84,9 +115,9 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
             val comment = Comment(
                 id = UUID.randomUUID().toString(),
                 author = currentUserName,
-                content = content,
+                content = ModeracionPalabras.censurar(content),
                 rating = rating,
-                date = "Hoy"
+                date = DateUtils.fechaHoraActual()
             )
             repository.addComment(pointId, comment)
             loadDetails(pointId)
@@ -99,7 +130,11 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
      */
     fun addReport(report: WaterPointReport, imageBytes: ByteArray? = null) {
         viewModelScope.launch {
-            repository.addReport(report, imageBytes)
+            // Censuramos la descripción antes de guardar
+            val reporteLimpio = report.copy(
+                description = ModeracionPalabras.censurar(report.description)
+            )
+            repository.addReport(reporteLimpio, imageBytes)
             loadDetails(report.pointId)
         }
     }
@@ -107,6 +142,12 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
     fun loadCommunityData() {
         viewModelScope.launch {
             _news.value = repository.getNews()
+            // Reportes reales de la comunidad
+            _recentReports.value = repository.getRecentReports()
+            // Aseguramos tener los puntos cargados para poder mostrar el nombre del punto reportado
+            if (_waterPoints.value.isEmpty()) {
+                _waterPoints.value = repository.getWaterPoints()
+            }
         }
     }
 }

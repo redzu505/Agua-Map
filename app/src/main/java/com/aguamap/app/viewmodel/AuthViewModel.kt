@@ -242,6 +242,8 @@ class AuthViewModel(
             sessionManager.limpiarSesion()
             // 3. También limpiamos las preferencias locales
             userPreferencesRepository.clearAll()
+            // 4. Limpiamos los puntos guardados (son del usuario que salió)
+            repository.limpiarFavoritos()
         }
         // 4. Limpiamos el estado en memoria (inmediato para que la UI reaccione)
         _usuarioLogueado.value = null

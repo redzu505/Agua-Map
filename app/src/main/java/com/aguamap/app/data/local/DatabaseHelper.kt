@@ -247,6 +247,35 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         return reports
     }
 
+    fun getAllReports(): List<WaterPointReport> {
+        val reports = mutableListOf<WaterPointReport>()
+        val db = readableDatabase
+        val cursor = db.query(
+            TABLE_REPORTES,
+            null,
+            null,
+            null,
+            null, null, "$COLUMN_DATE DESC"
+        )
+
+        with(cursor) {
+            while (moveToNext()) {
+                reports.add(
+                    WaterPointReport(
+                        id = getString(getColumnIndexOrThrow(COLUMN_ID)),
+                        pointId = getString(getColumnIndexOrThrow(COL_R_POINT_ID)),
+                        type = ReportType.valueOf(getString(getColumnIndexOrThrow(COL_R_TYPE))),
+                        description = getString(getColumnIndexOrThrow(COL_R_DESC)),
+                        date = getString(getColumnIndexOrThrow(COLUMN_DATE)),
+                        imageUrl = getString(getColumnIndexOrThrow(COL_R_IMAGE))
+                    )
+                )
+            }
+            close()
+        }
+        return reports
+    }
+
     // --- NOTICIAS ---
     fun insertNews(news: CommunityNews) {
         val db = writableDatabase

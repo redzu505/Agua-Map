@@ -2,6 +2,10 @@ package com.aguamap.app.ui
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -48,6 +52,11 @@ fun LoginScreen(
     ) {
         AnimatedContent(
             targetState = currentState,
+            // Transición limpia: solo desvanecido (cross-fade), SIN el efecto de escala
+            // por defecto que hacía que el logo/contenido "se agrandara" al cambiar de pantalla.
+            transitionSpec = {
+                fadeIn(animationSpec = tween(300)) togetherWith fadeOut(animationSpec = tween(300))
+            },
             label = "auth_transition"
         ) { state ->
             when (state) {

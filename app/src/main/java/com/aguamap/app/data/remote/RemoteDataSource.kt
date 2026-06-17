@@ -161,6 +161,29 @@ class RemoteDataSource(private val apiService: SupabaseApiService) {
     }
 
     /**
+     * Lee el rol del usuario logueado desde la tabla `perfiles`. Si la tabla no existe
+     * todavía o falla, devuelve "usuario" (fail-closed: nunca da admin por error).
+     */
+    suspend fun getRolUsuario(token: String): Result<String> {
+        val endpoint = "GET rest/v1/perfiles (rol)"
+        return try {
+            val response = apiService.getMiPerfil(apiKey, "Bearer $token")
+            if (response.isSuccessful) {
+                val rol = response.body()?.firstOrNull()?.rol ?: "usuario"
+                logOk(endpoint, "rol=$rol")
+                Result.success(rol)
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                logFallo(endpoint, response.code(), errorMsg)
+                Result.success("usuario") // ante error, tratamos como usuario normal
+            }
+        } catch (e: Exception) {
+            logExcepcion(endpoint, e)
+            Result.success("usuario")
+        }
+    }
+
+    /**
      * Cierra la sesión del lado del servidor. No es crítico si falla
      * (igual borraremos la sesión local), por eso nunca lanza.
      */
@@ -289,6 +312,25 @@ class RemoteDataSource(private val apiService: SupabaseApiService) {
         }
     }
 
+    suspend fun getReportesRecientes(token: String?): Result<List<WaterPointReport>> {
+        val endpoint = "GET rest/v1/reportes (recientes)"
+        return try {
+            val response = apiService.getReportesRecientes(apiKey, bearer(token))
+            if (response.isSuccessful && response.body() != null) {
+                val lista = response.body()!!.map { it.toReport() }
+                logOk(endpoint, "${lista.size} reportes")
+                Result.success(lista)
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                logFallo(endpoint, response.code(), errorMsg)
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            logExcepcion(endpoint, e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun crearReporte(token: String?, report: WaterPointReport): Result<Unit> {
         val endpoint = "POST rest/v1/reportes"
         return try {
@@ -327,6 +369,65 @@ class RemoteDataSource(private val apiService: SupabaseApiService) {
                 val lista = response.body()!!.map { it.toNews() }
                 logOk(endpoint, "${lista.size} noticias")
                 Result.success(lista)
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                logFallo(endpoint, response.code(), errorMsg)
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            logExcepcion(endpoint, e)
+            Result.failure(e)
+        }
+    }
+
+    // ==========================================
+    // SECCIÓN: FAVORITOS (puntos guardados)
+    // ==========================================
+
+    suspend fun getFavoritos(token: String): Result<Set<String>> {
+        val endpoint = "GET rest/v1/favoritos"
+        return try {
+            val response = apiService.getFavoritos(apiKey, "Bearer $token")
+            if (response.isSuccessful && response.body() != null) {
+                val ids = response.body()!!.mapNotNull { it.puntoId }.toSet()
+                logOk(endpoint, "${ids.size} guardados")
+                Result.success(ids)
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                logFallo(endpoint, response.code(), errorMsg)
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            logExcepcion(endpoint, e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun agregarFavorito(token: String, pointId: String): Result<Unit> {
+        val endpoint = "POST rest/v1/favoritos"
+        return try {
+            val response = apiService.agregarFavorito(apiKey, "Bearer $token", favorito = FavoritoDto(puntoId = pointId))
+            if (response.isSuccessful) {
+                logOk(endpoint, "punto=$pointId")
+                Result.success(Unit)
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                logFallo(endpoint, response.code(), errorMsg)
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            logExcepcion(endpoint, e)
+            Result.failure(e)
+        }
+    }
+
+    suspend fun quitarFavorito(token: String, pointId: String): Result<Unit> {
+        val endpoint = "DELETE rest/v1/favoritos"
+        return try {
+            val response = apiService.quitarFavorito(apiKey, "Bearer $token", puntoId = "eq.$pointId")
+            if (response.isSuccessful) {
+                logOk(endpoint, "punto=$pointId")
+                Result.success(Unit)
             } else {
                 val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
                 logFallo(endpoint, response.code(), errorMsg)

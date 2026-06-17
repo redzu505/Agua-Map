@@ -1,38 +1,47 @@
 package com.aguamap.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.lazy.items
+import com.aguamap.app.domain.WaterPoint
+import com.aguamap.app.domain.WaterPointReport
+import com.aguamap.app.util.TipsProvider
 import com.aguamap.app.viewmodel.HomeViewModel
 
 @Composable
 fun CommunityScreen(
     homeViewModel: HomeViewModel,
-    onBack: () -> Unit = {}
+    onBack: () -> Unit = {},
+    onNavigateToDetail: (String) -> Unit = {}
 ) {
-    val news by homeViewModel.news.collectAsState()
+    val recentReports by homeViewModel.recentReports.collectAsState()
+    val waterPoints by homeViewModel.waterPoints.collectAsState()
+
+    // Tip del día: se elige según el día del año desde assets/tips.json
+    val context = LocalContext.current
+    val tipDelDia = remember { TipsProvider.tipDelDia(context) }
 
     LaunchedEffect(Unit) {
         homeViewModel.loadCommunityData()
@@ -74,49 +83,38 @@ fun CommunityScreen(
                 }
             }
 
-            // Reportes Recientes
+            // Reportes Recientes (REALES: salen de los reportes que crea la gente)
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
+                    Text(
+                        "REPORTES RECIENTES",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = secondary,
+                        letterSpacing = 1.sp
+                    )
+
+                    if (recentReports.isEmpty()) {
                         Text(
-                            "REPORTES RECIENTES",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = secondary,
-                            letterSpacing = 1.sp
+                            "Aún no hay reportes de la comunidad. ¡Sé el primero en reportar un punto de agua!",
+                            fontSize = 13.sp,
+                            color = primary.copy(alpha = 0.6f)
                         )
-                        Text("Ver todo", fontSize = 12.sp, color = primary, fontWeight = FontWeight.Bold)
-                    }
-                    
-                    LazyRow(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        item {
-                            LightReportCard(
-                                title = "Fuente Los Postes",
-                                status = "Operativo",
-                                time = "Hace 5 min",
-                                location = "Estación Metro",
-                                icon = Icons.Default.CheckCircle,
-                                iconColor = Color(0xFF4CAF50),
-                                textColor = primary
-                            )
-                        }
-                        item {
-                            LightReportCard(
-                                title = "Parque Huiracocha",
-                                status = "Baja Presión",
-                                time = "Hace 1h",
-                                location = "Zona 3",
-                                icon = Icons.Default.Warning,
-                                iconColor = Color(0xFFFFA000),
-                                textColor = primary
-                            )
+                    } else {
+                        LazyRow(
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            items(recentReports) { report ->
+                                val pointName = waterPoints.find { it.id == report.pointId }?.name
+                                    ?: "Punto reportado"
+                                RealReportCard(
+                                    report = report,
+                                    pointName = pointName,
+                                    textColor = primary,
+                                    onClick = { onNavigateToDetail(report.pointId) }
+                                )
+                            }
                         }
                     }
                 }
@@ -142,9 +140,9 @@ fun CommunityScreen(
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text("TIP DEL DÍA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = secondary)
                                 }
-                                Text("Duchas de 5 minutos", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = primary)
+                                Text(tipDelDia.titulo, fontSize = 18.sp, fontWeight = FontWeight.Bold, color = primary)
                                 Text(
-                                    "Ahorra hasta 40 litros de agua por sesión. ¡Cuidemos SJL!",
+                                    tipDelDia.descripcion,
                                     fontSize = 12.sp,
                                     color = primary.copy(alpha = 0.7f)
                                 )
@@ -160,38 +158,35 @@ fun CommunityScreen(
                 }
             }
 
-            // Noticias de Infraestructura (Dinámicas)
-            items(news) { item ->
-                LightNewsCard(
-                    title = item.title,
-                    description = item.content,
-                    date = item.date,
-                    accentColor = secondary,
-                    textColor = primary
+            // NUEVOS PUNTOS DE AGUA (se generan automáticamente al crear un punto)
+            item {
+                Text(
+                    "NUEVOS PUNTOS DE AGUA",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = secondary,
+                    letterSpacing = 1.sp
                 )
             }
 
-            item {
-                LightActivityCard(
-                    user = "Lucía Rodríguez",
-                    time = "Hace 3h",
-                    content = "La fuente en la Estación Caja de Agua tiene una pequeña fuga. ¡Tomen precauciones!",
-                    likes = 24,
-                    comments = 5,
-                    accentColor = secondary,
-                    textColor = primary
-                )
+            if (waterPoints.isEmpty()) {
+                item {
+                    Text(
+                        "Aún no hay puntos de agua registrados.",
+                        fontSize = 13.sp,
+                        color = primary.copy(alpha = 0.6f)
+                    )
+                }
+            } else {
+                items(waterPoints) { point ->
+                    NewPointCard(
+                        point = point,
+                        textColor = primary,
+                        accentColor = secondary,
+                        onClick = { onNavigateToDetail(point.id) }
+                    )
+                }
             }
-/* 
-            item {
-                LightNewsCard(
-                    title = "Mantenimiento Programado",
-                    description = "Sedapal realizará limpieza de reservorios en Campoy este fin de semana.",
-                    date = "2026-04-02",
-                    accentColor = secondary,
-                    textColor = primary
-                )
-            } */
 
             item { Spacer(modifier = Modifier.height(80.dp)) }
         }
@@ -199,28 +194,108 @@ fun CommunityScreen(
 }
 
 @Composable
-fun LightReportCard(title: String, status: String, time: String, location: String, icon: ImageVector, iconColor: Color, textColor: Color) {
+fun RealReportCard(report: WaterPointReport, pointName: String, textColor: Color, onClick: () -> Unit = {}) {
     Card(
-        modifier = Modifier.width(170.dp),
+        modifier = Modifier.width(210.dp).clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            // Nombre del punto reportado
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(icon, contentDescription = null, tint = iconColor, modifier = Modifier.size(16.dp))
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color(0xFFE67E22),
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(modifier = Modifier.width(6.dp))
-                Text(title, color = textColor, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
+                Text(
+                    pointName,
+                    color = textColor,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
-            Text(location, color = textColor.copy(alpha = 0.6f), fontSize = 11.sp, fontWeight = FontWeight.Medium)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Tipo de problema reportado
+            Text(
+                report.type.displayName,
+                color = Color(0xFFC0392B),
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            // Descripción (si la hay)
+            if (report.description.isNotBlank()) {
+                Text(
+                    report.description,
+                    color = textColor.copy(alpha = 0.6f),
+                    fontSize = 11.sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            // Fecha
+            Text(report.date, color = Color.LightGray, fontSize = 10.sp)
+        }
+    }
+}
+
+@Composable
+fun NewPointCard(point: WaterPoint, textColor: Color, accentColor: Color, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = accentColor.copy(alpha = 0.12f)
             ) {
-                Text(status, color = Color.Gray, fontSize = 10.sp)
-                Text(time, color = Color.LightGray, fontSize = 10.sp)
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        Icons.Default.WaterDrop,
+                        contentDescription = null,
+                        tint = accentColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
             }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text("NUEVO PUNTO DE AGUA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = accentColor)
+                Text(
+                    point.name,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    point.address,
+                    fontSize = 12.sp,
+                    color = Color.Gray,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(point.type.displayName, fontSize = 11.sp, color = accentColor, fontWeight = FontWeight.Medium)
+            }
+            Icon(
+                Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = textColor.copy(alpha = 0.3f)
+            )
         }
     }
 }
@@ -259,36 +334,3 @@ fun LightNewsCard(title: String, description: String, date: String, accentColor:
     }
 }
 
-@Composable
-fun LightActivityCard(user: String, time: String, content: String, likes: Int, comments: Int, accentColor: Color, textColor: Color) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(modifier = Modifier.size(36.dp).clip(CircleShape).background(accentColor.copy(alpha = 0.2f)), contentAlignment = Alignment.Center) {
-                    Icon(Icons.Default.Person, contentDescription = null, tint = accentColor, modifier = Modifier.size(20.dp))
-                }
-                Spacer(modifier = Modifier.width(10.dp))
-                Column {
-                    Text(user, color = textColor, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                    Text("Reportó • $time", color = Color.Gray, fontSize = 11.sp)
-                }
-            }
-            Text(content, color = Color.DarkGray, fontSize = 14.sp, lineHeight = 20.sp)
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.ThumbUp, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
-                    Text(" $likes", color = Color.Gray, fontSize = 12.sp)
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(14.dp))
-                    Text(" $comments", color = Color.Gray, fontSize = 12.sp)
-                }
-            }
-        }
-    }
-}

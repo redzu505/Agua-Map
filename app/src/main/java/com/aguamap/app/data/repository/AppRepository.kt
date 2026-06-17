@@ -1,5 +1,6 @@
 package com.aguamap.app.data.repository
 
+import com.aguamap.app.data.local.FavoritosManager
 import com.aguamap.app.data.local.LocalDataSource
 import com.aguamap.app.data.local.SessionManager
 import com.aguamap.app.data.remote.AuthResponse     // import para autenticación
@@ -25,7 +26,8 @@ import com.aguamap.app.domain.WaterPointType
 class AppRepository(
     private val localDataSource: LocalDataSource,
     private val remoteDataSource: RemoteDataSource,
-    private val sessionManager: SessionManager
+    private val sessionManager: SessionManager,
+    private val favoritosManager: FavoritosManager
 ) {
 
     // Datos de respaldo (fallback) cuando no hay conexión ni datos remotos todavía
@@ -60,8 +62,17 @@ class AppRepository(
     }
 
     suspend fun iniciarSesion(email: String, contrasenia: String): Result<AuthSession> {
-        // Devuelve el usuario junto con los tokens (para persistir la sesión)
-        return remoteDataSource.iniciarSesion(email, contrasenia)
+        // 1. Iniciamos sesión (usuario + tokens)
+        val resultado = remoteDataSource.iniciarSesion(email, contrasenia)
+        val sesion = resultado.getOrNull() ?: return resultado
+
+        // 2. Con el token, leemos el ROL del usuario (admin / usuario)
+        val rol = sesion.accessToken
+            ?.let { token -> remoteDataSource.getRolUsuario(token).getOrDefault("usuario") }
+            ?: "usuario"
+
+        // 3. Devolvemos la sesión con el rol incluido
+        return Result.success(sesion.copy(usuario = sesion.usuario.copy(rol = rol)))
     }
 
     /**
@@ -170,6 +181,63 @@ class AppRepository(
         // 2. Guardamos en local (offline-first) y replicamos en Supabase
         localDataSource.saveReport(reporteFinal)
         remoteDataSource.crearReporte(token, reporteFinal)
+    }
+
+    /**
+     * Devuelve los reportes recientes de TODA la comunidad (no de un punto concreto).
+     * Se usa en la pantalla de Comunidad. Offline-first: remoto con fallback a local.
+     */
+    suspend fun getRecentReports(): List<WaterPointReport> {
+        val token = sessionManager.obtenerAccessToken()
+        remoteDataSource.getReportesRecientes(token).onSuccess { remotos ->
+            if (remotos.isNotEmpty()) return remotos
+        }
+        return localDataSource.getAllReports()
+    }
+
+    // ==========================================
+    // SECCIÓN: FAVORITOS (puntos guardados)
+    // ==========================================
+
+    /**
+     * Devuelve los IDs de puntos guardados. Offline-first: si hay sesión, los trae
+     * de Supabase y refresca la caché local; si no, usa la caché local.
+     */
+    suspend fun getFavoritos(): Set<String> {
+        val token = sessionManager.obtenerAccessToken()
+        if (token != null) {
+            remoteDataSource.getFavoritos(token).onSuccess { remoto ->
+                favoritosManager.guardar(remoto)
+                return remoto
+            }
+        }
+        return favoritosManager.favoritosActuales()
+    }
+
+    /**
+     * Marca/desmarca un punto como guardado. Devuelve true si quedó GUARDADO,
+     * false si se quitó. Actualiza local al instante y replica en Supabase.
+     */
+    suspend fun toggleFavorito(pointId: String): Boolean {
+        val actuales = favoritosManager.favoritosActuales().toMutableSet()
+        val token = sessionManager.obtenerAccessToken()
+
+        return if (pointId in actuales) {
+            actuales.remove(pointId)
+            favoritosManager.guardar(actuales)
+            if (token != null) remoteDataSource.quitarFavorito(token, pointId)
+            false
+        } else {
+            actuales.add(pointId)
+            favoritosManager.guardar(actuales)
+            if (token != null) remoteDataSource.agregarFavorito(token, pointId)
+            true
+        }
+    }
+
+    /** Borra los favoritos locales (al cerrar sesión). */
+    suspend fun limpiarFavoritos() {
+        favoritosManager.limpiar()
     }
 
     // ==========================================

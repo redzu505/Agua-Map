@@ -35,6 +35,7 @@ class SessionManager(private val context: Context) {
         val EMAIL = stringPreferencesKey("email")
         val TELEFONO = stringPreferencesKey("telefono")
         val DNI = stringPreferencesKey("dni")
+        val ROL = stringPreferencesKey("rol")
     }
 
     /**
@@ -55,7 +56,8 @@ class SessionManager(private val context: Context) {
                         usuario = prefs[Keys.USUARIO] ?: "",
                         email = prefs[Keys.EMAIL] ?: "",
                         telefono = prefs[Keys.TELEFONO] ?: "",
-                        dni = prefs[Keys.DNI] ?: ""
+                        dni = prefs[Keys.DNI] ?: "",
+                        rol = prefs[Keys.ROL] ?: "usuario"
                     ),
                     accessToken = prefs[Keys.ACCESS_TOKEN],
                     refreshToken = prefs[Keys.REFRESH_TOKEN]
@@ -74,6 +76,7 @@ class SessionManager(private val context: Context) {
             prefs[Keys.EMAIL] = usuario.email
             prefs[Keys.TELEFONO] = usuario.telefono
             prefs[Keys.DNI] = usuario.dni
+            prefs[Keys.ROL] = usuario.rol
             if (accessToken != null) prefs[Keys.ACCESS_TOKEN] = accessToken
             if (refreshToken != null) prefs[Keys.REFRESH_TOKEN] = refreshToken
         }

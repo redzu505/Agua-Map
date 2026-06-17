@@ -4,6 +4,7 @@ import okhttp3.RequestBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
@@ -45,6 +46,14 @@ interface SupabaseApiService {
         @Header("apikey") apiKey: String,
         @Header("Authorization") bearerToken: String
     ): Response<ResponseBody>
+
+    // Lee el perfil (rol) del usuario logueado. Gracias a RLS, devuelve solo SU fila.
+    @GET("rest/v1/perfiles")
+    suspend fun getMiPerfil(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Query("select") select: String = "rol"
+    ): Response<List<PerfilDto>>
 
     // ==========================================
     // PUNTOS DE AGUA (tabla: puntos_agua)
@@ -96,6 +105,16 @@ interface SupabaseApiService {
         @Query("order") order: String = "fecha.desc"
     ): Response<List<ReporteDto>>
 
+    // Reportes recientes de TODA la comunidad (para la pantalla de Comunidad)
+    @GET("rest/v1/reportes")
+    suspend fun getReportesRecientes(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Query("select") select: String = "*",
+        @Query("order") order: String = "created_at.desc",
+        @Query("limit") limit: Int = 20
+    ): Response<List<ReporteDto>>
+
     @POST("rest/v1/reportes")
     suspend fun crearReporte(
         @Header("apikey") apiKey: String,
@@ -114,6 +133,31 @@ interface SupabaseApiService {
         @Query("select") select: String = "*",
         @Query("order") order: String = "fecha.desc"
     ): Response<List<NoticiaDto>>
+
+    // ==========================================
+    // FAVORITOS (puntos guardados del usuario; tabla: favoritos)
+    // ==========================================
+    @GET("rest/v1/favoritos")
+    suspend fun getFavoritos(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Query("select") select: String = "punto_id"
+    ): Response<List<FavoritoDto>>
+
+    @POST("rest/v1/favoritos")
+    suspend fun agregarFavorito(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Header("Prefer") prefer: String = "return=minimal",
+        @Body favorito: FavoritoDto
+    ): Response<ResponseBody>
+
+    @DELETE("rest/v1/favoritos")
+    suspend fun quitarFavorito(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Query("punto_id") puntoId: String       // formato PostgREST: "eq.<id>"
+    ): Response<ResponseBody>
 
     // ==========================================
     // STORAGE (subir foto de un reporte al bucket "reportes")

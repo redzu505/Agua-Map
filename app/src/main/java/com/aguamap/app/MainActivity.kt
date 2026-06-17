@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.aguamap.app.data.local.DatabaseHelper
+import com.aguamap.app.data.local.FavoritosManager
 import com.aguamap.app.data.local.LocalDataSource
 import com.aguamap.app.data.local.SessionManager
 import com.aguamap.app.data.local.UserPreferencesRepository
@@ -41,8 +42,11 @@ class MainActivity : ComponentActivity() {
         // 2. Gestor de sesión (persiste token + usuario para el auto-login)
         val sessionManager = SessionManager(applicationContext)
 
-        // 3. Pasamos los DataSources y el gestor de sesión al repositorio unificado
-        val appRepository = AppRepository(localDataSource, remoteDataSource, sessionManager)
+        // 2.1 Gestor de puntos guardados (favoritos)
+        val favoritosManager = FavoritosManager(applicationContext)
+
+        // 3. Pasamos los DataSources y los gestores al repositorio unificado
+        val appRepository = AppRepository(localDataSource, remoteDataSource, sessionManager, favoritosManager)
 
         // 4. Creamos las instancias de los ViewModels compartiendo el mismo repositorio
         val userPrefsRepo = UserPreferencesRepository(applicationContext)

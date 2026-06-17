@@ -21,6 +21,8 @@ class LocalDataSource(private val dbHelper: DatabaseHelper) {
 
     fun getReports(pointId: String): List<WaterPointReport> = dbHelper.getReportsForPoint(pointId)
 
+    fun getAllReports(): List<WaterPointReport> = dbHelper.getAllReports()
+
     fun saveReport(report: WaterPointReport) = dbHelper.insertReport(report)
 
     fun getNews(): List<CommunityNews> = dbHelper.getAllNews()

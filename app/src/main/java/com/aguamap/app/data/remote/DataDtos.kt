@@ -52,3 +52,13 @@ data class NoticiaDto(
     val contenido: String? = null,
     val fecha: String? = null
 )
+
+// ---------- FAVORITOS (puntos guardados) ----------
+data class FavoritoDto(
+    @SerializedName("punto_id") val puntoId: String? = null
+)
+
+// ---------- PERFIL (rol del usuario) ----------
+data class PerfilDto(
+    val rol: String? = null
+)

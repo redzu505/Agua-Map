@@ -27,9 +27,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import com.aguamap.app.data.local.UserPreferencesRepository
 import com.aguamap.app.domain.SJL_SECTORS
 import com.aguamap.app.domain.UserPreferences
+import com.aguamap.app.domain.WaterPoint
+import com.aguamap.app.domain.WaterPointStatus
 import kotlinx.coroutines.launch
 
 @Composable
@@ -39,9 +42,11 @@ fun ProfileScreen(
     userName: String,
     userEmail: String,
     userPhone: String = "",
+    savedPoints: List<WaterPoint> = emptyList(),
     onLoginClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
-    onSaveProfile: (String, String) -> Unit = { _, _ -> }
+    onSaveProfile: (String, String) -> Unit = { _, _ -> },
+    onNavigateToDetail: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -123,7 +128,7 @@ fun ProfileScreen(
                     )
                 }
 
-                item { SavedPointsSection() }
+                item { SavedPointsSection(savedPoints = savedPoints, onNavigateToDetail = onNavigateToDetail) }
 
                 item {
                     SettingsSection(
@@ -284,43 +289,12 @@ fun ImpactSection() {
                 accentColor = primary
             )
             ImpactCard(
-                modifier = Modifier.weight(1f), 
-                icon = Icons.Default.AddCircle,
-                value = "5",
-                label = "Puntos sugeridos", 
+                modifier = Modifier.weight(1f),
+                icon = Icons.AutoMirrored.Filled.Chat,
+                value = "24",
+                label = "Comentarios realizados",
                 accentColor = secondary
             )
-        }
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    color = Color(0xFF4CAF50).copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Chat, 
-                            contentDescription = null, 
-                            tint = Color(0xFF4CAF50)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text("24", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = primary)
-                    Text("Comentarios realizados", fontSize = 14.sp, color = primary.copy(alpha = 0.6f))
-                }
-            }
         }
     }
 }
@@ -344,31 +318,34 @@ fun ImpactCard(modifier: Modifier, icon: ImageVector, value: String, label: Stri
 }
 
 @Composable
-fun SavedPointsSection() {
+fun SavedPointsSection(savedPoints: List<WaterPoint>, onNavigateToDetail: (String) -> Unit) {
     val primary = MaterialTheme.colorScheme.primary
-    val secondary = MaterialTheme.colorScheme.secondary
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Mis Puntos Guardados", color = primary.copy(alpha = 0.6f), fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            Text("Ver todos", color = secondary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text("Mis Puntos Guardados", color = primary.copy(alpha = 0.6f), fontSize = 16.sp, fontWeight = FontWeight.Medium)
+
+        if (savedPoints.isEmpty()) {
+            Text(
+                "Aún no has guardado ningún punto. Abre un punto de agua y toca el marcador para guardarlo.",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                fontSize = 13.sp
+            )
+        } else {
+            savedPoints.forEach { point ->
+                SavedPointItem(point = point, onClick = { onNavigateToDetail(point.id) })
+            }
         }
-        SavedPointItem("Fuente Parque Central", "Potable • 200m", Color(0xFF4CAF50))
-        SavedPointItem("Estación Eco-Sustentable", "Filtrada • 1.2km", Color(0xFF4CAF50))
     }
 }
 
 @Composable
-fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
+fun SavedPointItem(point: WaterPoint, onClick: () -> Unit) {
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
+    val statusColor = if (point.status == WaterPointStatus.OPERATIVO) Color(0xFF4CAF50) else Color(0xFFF44336)
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(1.dp)
@@ -382,14 +359,20 @@ fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = primary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(point.name, color = primary, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(statusColor))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(subtitle, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontSize = 14.sp)
+                    Text(
+                        "${point.type.displayName} • ${point.status.displayName}",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
-            Icon(Icons.Default.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+            Icon(Icons.Default.Bookmark, contentDescription = null, tint = secondary)
         }
     }
 }

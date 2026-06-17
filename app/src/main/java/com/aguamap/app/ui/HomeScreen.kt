@@ -24,6 +24,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
 import com.aguamap.app.R
+import com.aguamap.app.data.local.UserPreferencesRepository
+import com.aguamap.app.domain.UserPreferences
 import com.aguamap.app.domain.WaterPoint
 import com.aguamap.app.domain.WaterPointStatus
 import com.aguamap.app.domain.WaterPointType
@@ -42,6 +44,7 @@ import kotlinx.coroutines.launch
 fun HomeScreen(
     homeViewModel: HomeViewModel,
     isGuest: Boolean,
+    isAdmin: Boolean = false,
     userName: String,
     userEmail: String,
     userPhone: String = "",
@@ -74,6 +77,13 @@ fun HomeScreen(
     val isLoading by homeViewModel.isLoading.collectAsState()
     val routeDestination by homeViewModel.routeDestination.collectAsState()
 
+    // Preferencias del usuario (sector y radio de búsqueda) para filtrar los puntos
+    val prefsRepo = remember { UserPreferencesRepository(context) }
+    val userPreferences by prefsRepo.userPreferencesFlow.collectAsState(initial = UserPreferences())
+
+    // Puntos guardados (favoritos) del usuario
+    val favoritos by homeViewModel.favoritos.collectAsState()
+
     LaunchedEffect(Unit) {
         homeViewModel.loadWaterPoints()
         if (LocationUtils.hasLocationPermissions(context)) {
@@ -104,7 +114,7 @@ fun HomeScreen(
     val secondary = MaterialTheme.colorScheme.secondary
     val background = MaterialTheme.colorScheme.background
 
-    val waterPoints = remember(userLocation, waterPointsState, searchQuery, selectedFilter) {
+    val waterPoints = remember(userLocation, waterPointsState, searchQuery, selectedFilter, userPreferences) {
         waterPointsState
             .map { point ->
                 val distKm = userLocation?.let { loc ->
@@ -115,10 +125,10 @@ fun HomeScreen(
                 }
                 point to distKm
             }
-            .filter { (point, _) ->
-                val matchesSearch = point.name.contains(searchQuery, ignoreCase = true) || 
+            .filter { (point, distKm) ->
+                val matchesSearch = point.name.contains(searchQuery, ignoreCase = true) ||
                                    point.address.contains(searchQuery, ignoreCase = true)
-                
+
                 val matchesFilter = when (selectedFilter) {
                     "Todos" -> true
                     "Fuentes" -> point.type == WaterPointType.FUENTE
@@ -127,7 +137,15 @@ fun HomeScreen(
                     "Grifo" -> point.type == WaterPointType.GRIFO
                     else -> false
                 }
-                matchesSearch && matchesFilter
+
+                // PREFERENCIA: Sector (filtra por el sector elegido en el Perfil)
+                val matchesSector = puntoEnSector(point, userPreferences.selectedSector)
+
+                // PREFERENCIA: Radio de búsqueda (solo si ya tenemos ubicación GPS)
+                val matchesRadius = userLocation == null || distKm == null ||
+                        distKm <= userPreferences.searchRadius
+
+                matchesSearch && matchesFilter && matchesSector && matchesRadius
             }
             .sortedBy { (_, distKm) -> distKm ?: Double.MAX_VALUE }
             .map { (point, distKm) ->
@@ -220,9 +238,9 @@ fun HomeScreen(
             }
         },
         floatingActionButton = {
-            // Solo los usuarios registrados pueden sugerir nuevos puntos.
-            // Los invitados no ven el botón "+" (solo visualizan y filtran).
-            if (!isGuest && (selectedTab == "Points" || selectedTab == "Map")) {
+            // Solo el ADMINISTRADOR puede crear puntos de agua.
+            // Invitados y usuarios normales no ven el botón "+".
+            if (isAdmin && (selectedTab == "Points" || selectedTab == "Map")) {
                 FloatingActionButton(
                     onClick = onNavigateToAddPoint,
                     containerColor = secondary,
@@ -326,7 +344,11 @@ fun HomeScreen(
                     }
                 }
                 "Community" -> {
-                    CommunityScreen(homeViewModel = homeViewModel, onBack = { selectedTab = "Points" })
+                    CommunityScreen(
+                        homeViewModel = homeViewModel,
+                        onBack = { selectedTab = "Points" },
+                        onNavigateToDetail = onNavigateToDetail
+                    )
                 }
                 "Profile" -> {
                     ProfileScreen(
@@ -334,10 +356,12 @@ fun HomeScreen(
                         userName = userName,
                         userEmail = userEmail,
                         userPhone = userPhone,
+                        savedPoints = waterPointsState.filter { it.id in favoritos },
                         onBack = { selectedTab = "Points" },
                         onLoginClick = onNavigateToLogin,
                         onLogoutClick = onLogoutClick,
-                        onSaveProfile = onSaveProfile
+                        onSaveProfile = onSaveProfile,
+                        onNavigateToDetail = onNavigateToDetail
                     )
                 }
                 else -> {
@@ -349,6 +373,22 @@ fun HomeScreen(
         }
     }
 }
+
+/**
+ * ¿El punto pertenece al sector elegido? Si es "Todos", siempre true.
+ * Como los puntos no tienen un campo "sector" propio, lo deducimos buscando el
+ * nombre del sector dentro del nombre o la dirección del punto (sin tildes ni mayúsculas).
+ */
+private fun puntoEnSector(point: WaterPoint, sector: String): Boolean {
+    if (sector == "Todos") return true
+    val s = normalizarTexto(sector)
+    return normalizarTexto(point.name).contains(s) || normalizarTexto(point.address).contains(s)
+}
+
+private fun normalizarTexto(texto: String): String =
+    texto.lowercase()
+        .replace('á', 'a').replace('é', 'e').replace('í', 'i')
+        .replace('ó', 'o').replace('ú', 'u').replace('ü', 'u')
 
 @Preview(showSystemUi = true)
 @Composable

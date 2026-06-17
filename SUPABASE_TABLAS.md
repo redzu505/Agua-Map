@@ -82,6 +82,18 @@ create table if not exists public.noticias_comunidad (
     fecha         text,
     created_at    timestamptz default now()
 );
+
+-- 5) FAVORITOS / PUNTOS GUARDADOS ---------------------------
+-- Cada fila es "el usuario X guardó el punto Y". El user_id se llena solo
+-- con auth.uid(). La restricción unique evita guardar el mismo punto dos veces.
+create table if not exists public.favoritos (
+    id            bigint generated always as identity primary key,
+    user_id       uuid default auth.uid(),
+    punto_id      text not null,
+    created_at    timestamptz default now(),
+    unique (user_id, punto_id)
+);
+create index if not exists idx_favoritos_user on public.favoritos(user_id);
 ```
 
 ### Valores válidos (deben escribirse EXACTAMENTE así, en mayúsculas)
@@ -112,6 +124,7 @@ alter table public.puntos_agua       enable row level security;
 alter table public.comentarios       enable row level security;
 alter table public.reportes          enable row level security;
 alter table public.noticias_comunidad enable row level security;
+alter table public.favoritos         enable row level security;
 
 -- ---------- PUNTOS DE AGUA ----------
 create policy "puntos_lectura_publica"
@@ -148,11 +161,27 @@ create policy "reportes_insertar_logueado"
 create policy "noticias_lectura_publica"
     on public.noticias_comunidad for select
     using (true);
+
+-- ---------- FAVORITOS (cada usuario SOLO ve y gestiona los suyos) ----------
+create policy "favoritos_leer_propios"
+    on public.favoritos for select
+    to authenticated using (user_id = auth.uid());
+
+create policy "favoritos_insertar_propios"
+    on public.favoritos for insert
+    to authenticated with check (user_id = auth.uid());
+
+create policy "favoritos_borrar_propios"
+    on public.favoritos for delete
+    to authenticated using (user_id = auth.uid());
 ```
 
 > 💡 **¿Por qué "lectura pública"?** Para que los **invitados** (sin iniciar sesión)
 > puedan ver los puntos, comentarios y noticias. Las **escrituras** (crear punto,
 > comentar, reportar) requieren estar logueado, por eso usan `to authenticated`.
+>
+> 🔒 **Favoritos:** son privados. Cada usuario solo puede ver, guardar y borrar
+> **sus propios** puntos guardados (por eso las políticas usan `user_id = auth.uid()`).
 
 ---
 
@@ -258,12 +287,94 @@ SUPABASE_ANON_KEY=
 
 ---
 
+## 👮 Paso 7 — Roles: que SOLO el administrador cree puntos
+
+La app distingue 3 roles: **invitado** (mira y filtra), **usuario** (comenta y reporta) y
+**admin** (además **crea/edita/borra puntos de agua**). El rol vive en una tabla `perfiles`.
+
+> Este bloque es **aditivo y seguro**: agrega la tabla `perfiles` y **cambia las políticas de
+> `puntos_agua`** para que solo el admin escriba. No borra datos. Pégalo completo en el **SQL Editor**.
+
+```sql
+-- ============================================================
+--  AGUAMAP - ROLES (admin / usuario)
+-- ============================================================
+
+-- 1) Tabla de perfiles con el rol de cada usuario
+create table if not exists public.perfiles (
+    id        uuid primary key references auth.users(id) on delete cascade,
+    rol       text not null default 'usuario',   -- 'usuario' | 'admin'
+    creado_en timestamptz default now()
+);
+
+-- 2) Al registrarse, se crea su perfil automáticamente como 'usuario'
+create or replace function public.crear_perfil_nuevo()
+returns trigger language plpgsql security definer as $$
+begin
+    insert into public.perfiles (id, rol) values (new.id, 'usuario')
+    on conflict (id) do nothing;
+    return new;
+end; $$;
+
+drop trigger if exists al_registrarse_crear_perfil on auth.users;
+create trigger al_registrarse_crear_perfil
+    after insert on auth.users for each row execute function public.crear_perfil_nuevo();
+
+-- 3) Backfill: crea el perfil de los usuarios que YA estaban registrados
+insert into public.perfiles (id, rol)
+select id, 'usuario' from auth.users
+on conflict (id) do nothing;
+
+-- 4) RLS: cada quien puede leer SU propio perfil (así la app lee su rol)
+alter table public.perfiles enable row level security;
+drop policy if exists "perfil_leer_propio" on public.perfiles;
+create policy "perfil_leer_propio" on public.perfiles
+    for select to authenticated using (id = auth.uid());
+
+-- 5) Helper: ¿el usuario actual es admin?
+create or replace function public.es_admin() returns boolean
+language sql security definer as $$
+    select exists(select 1 from public.perfiles where id = auth.uid() and rol = 'admin');
+$$;
+
+-- 6) puntos_agua: la lectura sigue pública, pero crear/editar/borrar = SOLO ADMIN
+drop policy if exists "puntos_insertar_logueado" on public.puntos_agua;
+drop policy if exists "puntos_actualizar_logueado" on public.puntos_agua;
+create policy "puntos_admin_insert" on public.puntos_agua
+    for insert to authenticated with check (public.es_admin());
+create policy "puntos_admin_update" on public.puntos_agua
+    for update to authenticated using (public.es_admin());
+create policy "puntos_admin_delete" on public.puntos_agua
+    for delete to authenticated using (public.es_admin());
+```
+
+### 👑 Cómo nombrar a un administrador
+
+Un usuario se vuelve admin **solo desde aquí** (no desde la app, por seguridad). Hay 2 formas:
+
+**Opción A — SQL (por correo):**
+```sql
+update public.perfiles set rol = 'admin'
+where id = (select id from auth.users where email = 'CORREO_DEL_ADMIN@gmail.com');
+```
+
+**Opción B — Table Editor (visual):** Table Editor → tabla `perfiles` → busca la fila del
+usuario → cambia `rol` de `usuario` a `admin` → Guarda.
+
+> 🔎 Para saber el correo/`id` de cada usuario: **Authentication → Users**.
+
+> ⚠️ **Importante:** mientras NADIE sea admin, **nadie verá el botón de crear puntos** en la app
+> (es a propósito: "fail-closed"). Marca a tu cuenta como admin con el paso de arriba para empezar.
+
+---
+
 ## ✅ Checklist final
 
-- [ ] Paso 1: tablas creadas (`puntos_agua`, `comentarios`, `reportes`, `noticias_comunidad`).
+- [ ] Paso 1: tablas creadas (`puntos_agua`, `comentarios`, `reportes`, `noticias_comunidad`, `favoritos`).
 - [ ] Paso 2: RLS activado + políticas creadas.
 - [ ] Paso 3: bucket **`reportes`** creado (público) + políticas de Storage.
 - [ ] Paso 4: confirmación de correo configurada como prefieras.
 - [ ] Paso 6: credenciales en `local.properties` (opcional pero recomendado).
+- [ ] Paso 7: tabla `perfiles` + políticas de admin creadas, y **tu cuenta marcada como `admin`**.
 
 Cuando termines este checklist, **AguaMap quedará 100% conectada a Supabase.** 🎉

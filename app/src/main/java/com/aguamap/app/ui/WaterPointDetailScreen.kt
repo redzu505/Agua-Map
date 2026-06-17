@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
@@ -33,6 +34,7 @@ import com.aguamap.app.domain.WaterPoint
 import com.aguamap.app.domain.WaterPointReport
 import com.aguamap.app.domain.WaterPointStatus
 import com.aguamap.app.domain.WaterPointType
+import com.aguamap.app.util.DateUtils
 import com.aguamap.app.util.LocationService
 import com.aguamap.app.util.LocationUtils
 import com.aguamap.app.viewmodel.HomeViewModel
@@ -54,6 +56,8 @@ fun WaterPointDetailScreen(
     val comments by homeViewModel.comments.collectAsState()
     val reports by homeViewModel.reports.collectAsState()
     val waterPointsState by homeViewModel.waterPoints.collectAsState()
+    val favoritos by homeViewModel.favoritos.collectAsState()
+    val esFavorito = pointId in favoritos
     
     var showReportDialog by remember { mutableStateOf(false) }
 
@@ -99,7 +103,7 @@ fun WaterPointDetailScreen(
                         pointId = pointId,
                         type = type,
                         description = desc,
-                        date = "Hoy"
+                        date = DateUtils.fechaHoraActual()
                     ),
                     imageBytes = imageBytes
                 )
@@ -118,6 +122,18 @@ fun WaterPointDetailScreen(
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back))
+                    }
+                },
+                actions = {
+                    // Botón de guardar (favorito). Solo para usuarios registrados.
+                    if (!isGuest) {
+                        IconButton(onClick = { homeViewModel.toggleFavorito(pointId) }) {
+                            Icon(
+                                imageVector = if (esFavorito) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                contentDescription = if (esFavorito) "Quitar de guardados" else "Guardar punto",
+                                tint = secondary
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -160,10 +176,14 @@ fun WaterPointDetailScreen(
                         ) {
                             Text(
                                 point.name,
+                                modifier = Modifier.weight(1f),
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = primary
+                                color = primary,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
                             )
+                            Spacer(modifier = Modifier.width(8.dp))
                             StatusBadge(point.status)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -516,7 +536,9 @@ fun StatusBadge(status: WaterPointStatus) {
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
             color = color,
             fontSize = 10.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }
