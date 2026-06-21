@@ -42,8 +42,15 @@ class SyncReportWorker(
                 // 3. Intentar recuperar los bytes de la imagen si hay una ruta local guardada
                 val imageBytes = if (!report.imageUrl.isNullOrBlank() && !report.imageUrl.startsWith("http")) {
                     try {
-                        val uri = android.net.Uri.parse(report.imageUrl)
-                        context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        val file = java.io.File(report.imageUrl)
+                        if (file.exists()) {
+                            // Caso A: Es una ruta de archivo física (/data/user/0/...)
+                            file.readBytes()
+                        } else {
+                            // Caso B: Es una URI (content://)
+                            val uri = android.net.Uri.parse(report.imageUrl)
+                            context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                        }
                     } catch (e: Exception) {
                         android.util.Log.e("SyncReportWorker", "No se pudo leer la imagen local: ${report.imageUrl}", e)
                         null

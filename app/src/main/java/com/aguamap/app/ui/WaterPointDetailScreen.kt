@@ -98,7 +98,7 @@ fun WaterPointDetailScreen(
             pointName = point.name,
             onDismiss = { showReportDialog = false },
             onSend = { type, desc, imageUri ->
-                // Si el usuario adjuntó una foto, leemos sus bytes para subirlos a Storage
+                // 1. Leemos los bytes para el envío inmediato si hay red
                 val imageBytes = imageUri?.let { uri ->
                     try {
                         context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
@@ -106,6 +106,22 @@ fun WaterPointDetailScreen(
                         null
                     }
                 }
+
+                // 2. --- NUEVO: Copiar imagen a caché interna para persistencia offline ---
+                // El Photo Picker pierde permisos al cerrar la app; guardamos una copia física.
+                val persistentPath = imageUri?.let { uri ->
+                    try {
+                        val fileName = "img_offline_${UUID.randomUUID()}.jpg"
+                        val file = java.io.File(context.cacheDir, fileName)
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            file.outputStream().use { output -> input.copyTo(output) }
+                        }
+                        file.absolutePath // Guardamos la ruta física real (/data/user/0/...)
+                    } catch (e: Exception) {
+                        imageUri.toString() // Fallback a la URI original si algo falla
+                    }
+                }
+
                 homeViewModel.addReport(
                     WaterPointReport(
                         id = UUID.randomUUID().toString(),
@@ -113,7 +129,7 @@ fun WaterPointDetailScreen(
                         type = type,
                         description = desc,
                         date = DateUtils.fechaHoraActual(),
-                        imageUrl = imageUri?.toString() // Almacenamos la URI local para que el Worker pueda subirla después
+                        imageUrl = persistentPath // Usamos la ruta física persistente
                     ),
                     imageBytes = imageBytes
                 )
