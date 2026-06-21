@@ -46,7 +46,7 @@ class MainActivity : ComponentActivity() {
         val favoritosManager = FavoritosManager(applicationContext)
 
         // 3. Pasamos los DataSources y los gestores al repositorio unificado
-        val appRepository = AppRepository(localDataSource, remoteDataSource, sessionManager, favoritosManager)
+        val appRepository = AppRepository(localDataSource, remoteDataSource, sessionManager, favoritosManager, applicationContext)
 
         // 4. Creamos las instancias de los ViewModels compartiendo el mismo repositorio
         val userPrefsRepo = UserPreferencesRepository(applicationContext)

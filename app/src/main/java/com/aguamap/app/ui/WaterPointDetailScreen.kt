@@ -84,6 +84,15 @@ fun WaterPointDetailScreen(
         return
     }
 
+    val rawDistance = remember(userLocation, point) {
+        userLocation?.let { loc ->
+            point?.let { p ->
+                LocationUtils.calculateDistance(loc.latitude, loc.longitude, p.latitude, p.longitude)
+            }
+        }
+    }
+    val isNearEnough = rawDistance != null && rawDistance <= 0.1 // 0.1 km = 100 metros
+
     if (showReportDialog) {
         ReportDialog(
             pointName = point.name,
@@ -103,7 +112,8 @@ fun WaterPointDetailScreen(
                         pointId = pointId,
                         type = type,
                         description = desc,
-                        date = DateUtils.fechaHoraActual()
+                        date = DateUtils.fechaHoraActual(),
+                        imageUrl = imageUri?.toString() // Almacenamos la URI local para que el Worker pueda subirla después
                     ),
                     imageBytes = imageBytes
                 )
@@ -246,16 +256,31 @@ fun WaterPointDetailScreen(
             }
 
             if (!isGuest) {
-                // Solo usuarios registrados pueden reportar problemas
-                Button(
-                    onClick = { showReportDialog = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = secondary)
-                ) {
-                    Icon(Icons.Default.Report, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(stringResource(R.string.btn_report_problem))
+                // Solo usuarios registrados pueden reportar problemas si están cerca (100m)
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { showReportDialog = true },
+                        enabled = isNearEnough,
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = secondary,
+                            disabledContainerColor = secondary.copy(alpha = 0.5f)
+                        )
+                    ) {
+                        Icon(Icons.Default.Report, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.btn_report_problem))
+                    }
+                    
+                    if (!isNearEnough) {
+                        Text(
+                            "Debes estar a menos de 100 metros del punto para reportar.",
+                            color = MaterialTheme.colorScheme.error,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(horizontal = 4.dp)
+                        )
+                    }
                 }
             } else {
                 // Aviso para invitados

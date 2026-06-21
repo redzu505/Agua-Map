@@ -1,5 +1,8 @@
 package com.aguamap.app.data.repository
 
+import android.content.Context
+import androidx.work.*
+import java.util.concurrent.TimeUnit
 import com.aguamap.app.data.local.FavoritosManager
 import com.aguamap.app.data.local.LocalDataSource
 import com.aguamap.app.data.local.SessionManager
@@ -13,6 +16,7 @@ import com.aguamap.app.domain.WaterPoint
 import com.aguamap.app.domain.WaterPointReport
 import com.aguamap.app.domain.WaterPointStatus
 import com.aguamap.app.domain.WaterPointType
+import com.aguamap.app.util.SyncReportWorker
 
 /**
  * CAPA DE DATOS - REPOSITORIO
@@ -27,7 +31,8 @@ class AppRepository(
     private val localDataSource: LocalDataSource,
     private val remoteDataSource: RemoteDataSource,
     private val sessionManager: SessionManager,
-    private val favoritosManager: FavoritosManager
+    private val favoritosManager: FavoritosManager,
+    private val context: Context
 ) {
 
     // Datos de respaldo (fallback) cuando no hay conexión ni datos remotos todavía
@@ -167,7 +172,7 @@ class AppRepository(
      * Agrega un reporte. Si se adjuntó una foto (imageBytes), primero la sube a
      * Supabase Storage y guarda la URL pública en el reporte.
      */
-    suspend fun addReport(report: WaterPointReport, imageBytes: ByteArray? = null) {
+    suspend fun addReport(report: WaterPointReport, imageBytes: ByteArray? = null): Result<Unit> {
         val token = sessionManager.obtenerAccessToken()
 
         // 1. Si hay foto, la subimos a Storage y obtenemos su URL pública
@@ -180,7 +185,26 @@ class AppRepository(
 
         // 2. Guardamos en local (offline-first) y replicamos en Supabase
         localDataSource.saveReport(reporteFinal)
-        remoteDataSource.crearReporte(token, reporteFinal)
+        val result = remoteDataSource.crearReporte(token, reporteFinal)
+
+        // 3. Programamos el Worker para asegurar la sincronización de reportes pendientes
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        val syncRequest = OneTimeWorkRequestBuilder<SyncReportWorker>()
+            .setConstraints(constraints)
+            .setBackoffCriteria(
+                BackoffPolicy.LINEAR,
+                WorkRequest.MIN_BACKOFF_MILLIS,
+                TimeUnit.MILLISECONDS
+            )
+            .build()
+        WorkManager.getInstance(context).enqueueUniqueWork(
+            "SyncReportsWork",
+            ExistingWorkPolicy.REPLACE,
+            syncRequest
+        )
+        return result
     }
 
     /**

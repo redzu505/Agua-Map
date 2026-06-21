@@ -19,7 +19,7 @@ object ModeracionPalabras {
         "estupido", "estupida", "maricon", "verga", "pija", "culiao", "culiado",
         "ctm", "csm", "ctmr", "mrd", "joder", "coño", "gilipollas", "zorra", "perra",
         "malparido", "hijueputa", "hdp", "cojudo", "cojuda", "tarado", "tarada",
-        "baboso", "cornudo", "chucha", "mocoso", "pelotudo", "boludo", "forro"
+        "baboso", "cornudo", "chucha", "mocoso", "pelotudo", "boludo", "forro", "tonto"
     )
 
     private val regexPalabras = Regex("[\\p{L}]+")

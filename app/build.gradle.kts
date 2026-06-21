@@ -89,6 +89,11 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     // Interceptor de logging: muestra en Logcat cada petición/respuesta a Supabase
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // WorkManager para sincronización offline (Sprint 3)
+    val work_version = "2.10.0"
+    implementation("androidx.work:work-runtime-ktx:$work_version")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

@@ -218,6 +218,34 @@ class DatabaseHelper(context: Context) : SQLiteOpenHelper(context, DATABASE_NAME
         db.insertWithOnConflict(TABLE_REPORTES, null, values, SQLiteDatabase.CONFLICT_REPLACE)
     }
 
+    fun getUnsyncedReports(): List<WaterPointReport> {
+        val reports = mutableListOf<WaterPointReport>()
+        val db = readableDatabase
+        val cursor = db.query(TABLE_REPORTES, null, "$COL_R_SYNCED = 0", null, null, null, null)
+        with(cursor) {
+            while (moveToNext()) {
+                reports.add(
+                    WaterPointReport(
+                        id = getString(getColumnIndexOrThrow(COLUMN_ID)),
+                        pointId = getString(getColumnIndexOrThrow(COL_R_POINT_ID)),
+                        type = ReportType.valueOf(getString(getColumnIndexOrThrow(COL_R_TYPE))),
+                        description = getString(getColumnIndexOrThrow(COL_R_DESC)),
+                        date = getString(getColumnIndexOrThrow(COLUMN_DATE)),
+                        imageUrl = getString(getColumnIndexOrThrow(COL_R_IMAGE))
+                    )
+                )
+            }
+            close()
+        }
+        return reports
+    }
+
+    fun markReportAsSynced(reportId: String) {
+        val db = writableDatabase
+        val values = ContentValues().apply { put(COL_R_SYNCED, 1) }
+        db.update(TABLE_REPORTES, values, "$COLUMN_ID = ?", arrayOf(reportId))
+    }
+
     fun getReportsForPoint(pointId: String): List<WaterPointReport> {
         val reports = mutableListOf<WaterPointReport>()
         val db = readableDatabase
