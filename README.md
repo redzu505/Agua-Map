@@ -1,67 +1,111 @@
-# 💧 AguaMap: Resiliencia Hídrica y Gestión Comunitaria en SJL
+# AguaMap
 
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-blue.svg)](https://kotlinlang.org/)
-[![Compose](https://img.shields.io/badge/Jetpack_Compose-Modern_UI-green.svg)](https://developer.android.com/jetpack/compose)
-[![Clean Architecture](https://img.shields.io/badge/Architecture-Clean-orange.svg)](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
-[![License](https://img.shields.io/badge/Social_Impact-ODS_6_%26_12-blue.svg)]()
+Aplicación Android nativa para la localización colaborativa de puntos de abastecimiento
+de agua potable en el distrito de San Juan de Lurigancho (SJL), Lima. Permite a los vecinos
+encontrar fuentes de agua confiables, reportar averías con evidencia fotográfica y validación
+por GPS, y participar en una comunidad de "Guardianes del Agua".
 
-## 📝 1. Resumen Ejecutivo
-**AguaMap** es una plataforma nativa de Android diseñada para mitigar el estrés hídrico en el distrito de San Juan de Lurigancho (SJL), Lima. A través de un ecosistema colaborativo y georreferenciado, la aplicación permite la localización de puntos de abastecimiento de agua potable, promoviendo la transparencia en la disponibilidad del recurso y la educación ciudadana bajo el marco de los **Objetivos de Desarrollo Sostenible (ODS 6: Agua Limpia y Saneamiento y ODS 12: Producción y Consumo Responsables)**.
+Proyecto de ingeniería de software con enfoque en los Objetivos de Desarrollo Sostenible
+(ODS 6: Agua Limpia y Saneamiento; ODS 12: Producción y Consumo Responsables).
 
----
+## Descripción
 
-## 🚀 2. Capacidades Operativas y Funcionales
+AguaMap centraliza información georreferenciada sobre puntos de agua (fuentes, pozos, agua
+filtrada, grifos), su estado operativo, horarios y valoración de la comunidad. Está construida
+con una estrategia offline-first: la app sigue funcionando sin conexión usando una caché local
+y sincroniza con el backend cuando se recupera la red.
 
-### 📍 Inteligencia Geoespacial y Navegación
-*   **Geolocalización en Tiempo Real:** Integración con `FusedLocationProviderClient` para un rastreo de alta precisión de la ubicación del usuario.
-*   **Métricas de Proximidad:** Implementación de la **Fórmula de Haversine** para el cálculo dinámico de distancias, permitiendo al usuario identificar el punto de suministro más cercano de forma instantánea.
-*   **Cartografía Dinámica:** Motor de renderizado basado en **MapLibre GL**, optimizado para el despliegue de marcadores interactivos y seguimiento del usuario en tiempo real.
+## Características principales
 
-### 👤 Experiencia de Usuario (UX) de Alto Impacto
-*   **Diseño "Ocean & Cloud":** Interfaz fluida basada en Material 3, optimizada para la legibilidad en condiciones de campo y alta luminosidad.
-*   **Gestión Multimedia:** Sistema de carga asíncrona de imágenes mediante **Coil** para la verificación visual y validación de los puntos de hidratación.
-*   **Accesibilidad Universal:** Soporte nativo para modos de alto contraste y localización total al español, asegurando la inclusión de todos los sectores de la población.
+- Autenticación con Supabase Auth (tokens JWT con refresco automático) y tres roles:
+  Invitado (solo lectura), Ciudadano y Administrador.
+- Registro con validación por campo (DNI de 8 dígitos, teléfono de 9 dígitos, correo con
+  formato válido, contraseña mínima de 6 caracteres) y aceptación de Términos y Condiciones.
+- Mapa interactivo con MapLibre GL, marcadores georreferenciados y trazado de ruta a pie
+  por calles mediante OSRM.
+- Ficha de detalle del punto con estado, horario, tipo, calificación promedio, coordenadas,
+  comentarios y reportes.
+- Filtro por tipo y por sector de SJL, búsqueda por nombre y registro de nuevos puntos
+  (rol Administrador).
+- Reporte de averías con foto (cámara nativa o galería, con manejo de permisos) y validación
+  de proximidad GPS menor a 100 metros mediante la fórmula de Haversine.
+- Cola de reportes offline en SQLite con sincronización diferida mediante WorkManager.
+- Valoración de puntos del 1 al 5 (un voto por usuario, modificable; el promedio se recalcula
+  automáticamente en el servidor) y comentarios de texto con moderación léxica automática.
+- Módulo comunidad con noticias/alertas y reportes recientes.
+- Perfil con métricas reales del usuario (reportes y comentarios) y preferencias persistidas
+  en DataStore (sector, radio de búsqueda, modo oscuro y alto contraste).
 
----
+## Arquitectura
 
-## 🏗️ 3. Arquitectura de Software y Estrategia de Datos
+El proyecto sigue el patrón MVVM con una capa de repositorio como única fuente de verdad,
+que decide entre datos remotos (Supabase) y la caché local (offline-first). La inyección de
+dependencias es manual (se construyen en `MainActivity`), sin frameworks de DI.
 
-El sistema se rige bajo los principios de **Clean Architecture** y el patrón **MVVM**, garantizando un código desacoplado, mantenible y preparado para la escala industrial.
+Capas principales:
 
-### 🗄️ Estrategia de Persistencia Híbrida (Offline-First)
-Para responder a los desafíos de conectividad intermitente en las zonas periféricas de SJL, AguaMap implementa una persistencia relacional de dos niveles:
+- UI: pantallas en Jetpack Compose (`ui/`) y navegación con Navigation Compose.
+- ViewModel: gestión de estado con `StateFlow` (`viewmodel/`).
+- Repositorio: orquestación de datos y lógica offline-first (`data/repository/`).
+- Datos remotos: consumo de la API REST de Supabase con Retrofit (`data/remote/`).
+- Datos locales: caché en SQLite y preferencias/sesión en DataStore (`data/local/`).
 
-#### Nivel 1: Capa de Resiliencia Local (SQLite)
-Utiliza un motor relacional embebido para gestionar el almacenamiento persistente en el dispositivo.
-*   **Tabla `puntos_agua`:** Caché de mapa para disponibilidad inmediata de marcadores.
-*   **Tabla `noticias_comunidad`:** Almacenamiento de alertas de cortes de Sedapal y tips de ahorro (ODS 12).
-*   **Tabla `reportes_locales`:** Buffer de incidencias para envío asíncrono una vez recuperada la conexión.
-*   **Tabla `detalles_puntos` y `comentarios_cache`:** Información técnica y social para la toma de decisiones informada sin dependencia de red.
+## Persistencia de datos
 
-#### Nivel 2: Fuente de Verdad Centralizada (PostgreSQL)
-Implementada en la nube para unificar los reportes de todos los "Guardianes del Agua", permitiendo la actualización global de estados de suministro y validación comunitaria.
+- Local, caché offline (SQLite con `SQLiteOpenHelper`): tablas `puntos_agua`,
+  `noticias_comunidad`, `reportes_locales` (con bandera de sincronización) y
+  `comentarios_cache`.
+- Local, sesión y preferencias (Jetpack DataStore): tokens de sesión y ajustes de usuario.
+- Remoto (Supabase / PostgreSQL): tablas `perfiles`, `puntos_agua`, `comentarios`, `reportes`,
+  `noticias_comunidad`, `favoritos` y `valoraciones`, más Supabase Storage para las fotos de
+  los reportes. Se consume por REST directamente con Retrofit (sin SDK de Supabase).
 
----
+## Stack tecnológico
 
-## 🛠️ 4. Stack Tecnológico Profesional
-*   **Lenguaje:** Kotlin (Coroutines & Flow para gestión de estados asíncronos).
-*   **UI Framework:** Jetpack Compose (Modern Declarative UI).
-*   **Inyección de Dependencias:** Estructura preparada para Hilt/Dagger.
-*   **Mapas:** MapLibre SDK v10 (Vector Tiles).
-*   **Backend-as-a-Service:** Supabase (PostgreSQL, Auth & Storage).
+- Lenguaje: Kotlin 2.2.10 (Coroutines y Flow).
+- UI: Jetpack Compose (BOM 2026.02.01) con Material 3.
+- Navegación: Navigation Compose 2.9.8.
+- Mapas: MapLibre GL (android-sdk-opengl) 13.2.0.
+- Ubicación: play-services-location 21.3.0 (Fused Location) + coroutines-play-services.
+- Red: Retrofit 2.11.0 + converter-gson, OkHttp 4.12.0 (Supabase Auth, REST y Storage).
+- Imágenes: Coil 2.7.0.
+- Persistencia local: SQLite nativo (`SQLiteOpenHelper`) y DataStore Preferences 1.2.1.
+- Sincronización en segundo plano: WorkManager 2.10.0.
+- Rutas: servicio externo OSRM (API pública).
+- Backend: Supabase (PostgreSQL, Auth y Storage).
 
----
+## Build
 
-## 🚢 5. Hoja de Ruta a Producción y Escalabilidad ($0 Cost)
+- Gradle 9.4.1, Android Gradle Plugin 9.1.0, Java 11.
+- minSdk 24 (Android 7.0), target/compileSdk 36.
+- Package: `com.aguamap.app`.
 
-El despliegue de AguaMap está diseñado para ser sostenible sin requerir inversión inicial en infraestructura mediante el uso de tecnologías *Cloud-Native* gratuitas:
+## Cómo ejecutar
 
-1.  **Infraestructura:** Despliegue de la base de datos en **Supabase** (PostgreSQL de nivel empresarial).
-2.  **Media Hosting:** Almacenamiento de evidencias fotográficas en **Supabase Storage**.
-3.  **Pipeline CI/CD:** Automatización de builds y calidad de código mediante **GitHub Actions**.
-4.  **Distribución Estratégica:** Fase de *Closed Beta* a través de **Firebase App Distribution** para un despliegue controlado en comunidades seleccionadas de SJL antes del lanzamiento en Google Play Store.
+1. Clonar el repositorio y abrirlo en Android Studio.
+2. Crear un archivo `local.properties` en la raíz del proyecto con las credenciales de Supabase
+   (la URL debe terminar en `/`):
 
----
+   ```properties
+   SUPABASE_URL=https://<tu-proyecto>.supabase.co/
+   SUPABASE_ANON_KEY=<tu-anon-key>
+   ```
 
-## 🏁 6. Impacto Social y Conclusión
-AguaMap no es solo una aplicación, es una herramienta de **Gobernanza Ciudadana**. Al centralizar la información sobre la disponibilidad de agua, reducimos el tiempo de desplazamiento, combatimos la especulación de precios y empoderamos al ciudadano con datos reales. Esta arquitectura garantiza que, incluso sin señal de internet, la información vital siga fluyendo.
+   Si no se definen, la app compila igual y funciona con la caché local (offline-first).
+3. Configurar la base de datos en Supabase siguiendo `SUPABASE_TABLAS.md` (tablas, seguridad
+   RLS y bucket de fotos) y `SUPABASE_ACTUALIZACIONES.md` (roles, favoritos y valoraciones).
+4. Ejecutar la app desde Android Studio en un emulador o dispositivo con Android 7.0 o superior.
+
+## Documentación del repositorio
+
+- `SUPABASE_TABLAS.md`: estado actual del esquema de la base de datos.
+- `SUPABASE_ACTUALIZACIONES.md`: migraciones y funciones adicionales (roles, favoritos, valoraciones).
+- `VERSIONES.md`: versiones de librerías y del entorno de build.
+- `ROLES_Y_PERMISOS.md`: modelo de roles y permisos.
+
+## Estado del proyecto
+
+Prototipo funcional en desarrollo, con fines académicos e informativos. La información de
+puntos de agua se genera de forma colaborativa. La aplicación no tiene relación oficial con
+SEDAPAL ni con entidades gubernamentales.
+
