@@ -263,11 +263,6 @@ class AppRepository(
         val userId = obtenerUserIdActual(token) ?: return 0 to 0
         val reportes = remoteDataSource.contarReportesUsuario(token, userId)
         val comentarios = remoteDataSource.contarComentariosUsuario(token, userId)
-        // DIAGNÓSTICO: en Logcat (filtro AGUAMAP_NET) veremos el UUID usado y los conteos.
-        android.util.Log.d(
-            "AGUAMAP_NET",
-            "📊 Estadisticas → userId=[$userId] reportes=$reportes comentarios=$comentarios"
-        )
         return reportes to comentarios
     }
 

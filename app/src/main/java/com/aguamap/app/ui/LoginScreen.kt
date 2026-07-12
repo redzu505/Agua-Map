@@ -247,17 +247,6 @@ fun LoginView(
             errorMessage = passwordError
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            "¿Olvidaste tu contraseña?",
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.End,
-            color = secondary,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium
-        )
-
         Spacer(modifier = Modifier.height(32.dp))
 
         // 3. Control de UI: Si está cargando muestra el Spinner, si no, el Botón
