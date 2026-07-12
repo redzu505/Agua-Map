@@ -122,6 +122,7 @@ class AuthViewModel(
             resultado.onSuccess { authResponse ->
                 //Al registrarse con éxito, guardamos los datos en nuestro estado local
                 val nuevoUsuario = UsuarioSesion(
+                    id = authResponse.user?.id ?: "",
                     nombre = nombre,
                     usuario = usuario,
                     email = email,

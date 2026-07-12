@@ -110,6 +110,7 @@ class RemoteDataSource(private val apiService: SupabaseApiService) {
                 val metadata = body.user?.user_metadata
                 val sesion = AuthSession(
                     usuario = UsuarioSesion(
+                        id = body.user?.id ?: "",
                         nombre = metadata?.full_name ?: "",
                         usuario = metadata?.username ?: "",
                         email = body.user?.email ?: email,
@@ -286,6 +287,59 @@ class RemoteDataSource(private val apiService: SupabaseApiService) {
         } catch (e: Exception) {
             logExcepcion(endpoint, e)
             Result.failure(e)
+        }
+    }
+
+    // ==========================================
+    // SECCIÓN: VALORACIONES (puntaje 1-5)
+    // ==========================================
+
+    /**
+     * Crea o modifica MI valoración de un punto (upsert). El promedio del punto
+     * lo recalcula automáticamente un trigger en la base de datos.
+     */
+    suspend fun valorarPunto(token: String, pointId: String, valor: Int): Result<Unit> {
+        val endpoint = "POST rest/v1/valoraciones"
+        return try {
+            val dto = ValoracionDto(puntoId = pointId, valor = valor)
+            val response = apiService.valorarPunto(apiKey, "Bearer $token", valoracion = dto)
+            if (response.isSuccessful) {
+                logOk(endpoint, "punto=$pointId valor=$valor")
+                Result.success(Unit)
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                logFallo(endpoint, response.code(), errorMsg)
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            logExcepcion(endpoint, e)
+            Result.failure(e)
+        }
+    }
+
+    /**
+     * Lee MI valoración actual de un punto (o null si aún no he votado / falla).
+     */
+    suspend fun getMiValoracion(token: String, userId: String, pointId: String): Result<Int?> {
+        val endpoint = "GET rest/v1/valoraciones (mi voto)"
+        return try {
+            val response = apiService.getMiValoracion(
+                apiKey, "Bearer $token",
+                puntoId = "eq.$pointId",
+                userId = "eq.$userId"
+            )
+            if (response.isSuccessful) {
+                val valor = response.body()?.firstOrNull()?.valor
+                logOk(endpoint, "punto=$pointId valor=$valor")
+                Result.success(valor)
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                logFallo(endpoint, response.code(), errorMsg)
+                Result.success(null)
+            }
+        } catch (e: Exception) {
+            logExcepcion(endpoint, e)
+            Result.success(null)
         }
     }
 

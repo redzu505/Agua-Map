@@ -61,6 +61,7 @@ fun WaterPointDetailScreen(
     
     val comments by homeViewModel.comments.collectAsState()
     val reports by homeViewModel.reports.collectAsState()
+    val miValoracion by homeViewModel.miValoracion.collectAsState()
     val waterPointsState by homeViewModel.waterPoints.collectAsState()
     val favoritos by homeViewModel.favoritos.collectAsState()
     val esFavorito = pointId in favoritos
@@ -242,6 +243,16 @@ fun WaterPointDetailScreen(
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = primary.copy(alpha = 0.1f))
 
+            // SECCIÓN DE VALORACIÓN (solo usuarios registrados)
+            if (!isGuest) {
+                RatingSelector(
+                    miValoracion = miValoracion,
+                    promedio = point.rating,
+                    onRate = { estrellas -> homeViewModel.valorarPunto(pointId, estrellas) }
+                )
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = primary.copy(alpha = 0.1f))
+            }
+
             // SECCIÓN DE REPORTES ACTIVOS
             if (reports.isNotEmpty()) {
                 ReportsSection(reports)
@@ -335,6 +346,46 @@ fun GuestActionHint(message: String) {
                 color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
             )
         }
+    }
+}
+
+/**
+ * Selector de estrellas para valorar un punto (1-5). Muestra el voto actual del
+ * usuario y el promedio del punto. Al tocar una estrella, envía/actualiza el voto.
+ */
+@Composable
+fun RatingSelector(
+    miValoracion: Int?,
+    promedio: Double,
+    onRate: (Int) -> Unit
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val estrella = Color(0xFFFFB300)
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Tu valoración", fontWeight = FontWeight.Bold, fontSize = 18.sp, color = primary)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            (1..5).forEach { i ->
+                Icon(
+                    imageVector = if (miValoracion != null && i <= miValoracion) Icons.Default.Star else Icons.Default.StarBorder,
+                    contentDescription = "Valorar con $i estrella(s)",
+                    tint = estrella,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clickable { onRate(i) }
+                        .padding(4.dp)
+                )
+            }
+        }
+        Text(
+            text = if (miValoracion == null) {
+                "Toca una estrella para valorar. Promedio actual: $promedio ★"
+            } else {
+                "Tu voto: $miValoracion ★  ·  Promedio: $promedio ★"
+            },
+            fontSize = 12.sp,
+            color = primary.copy(alpha = 0.6f)
+        )
     }
 }
 

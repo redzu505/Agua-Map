@@ -30,6 +30,7 @@ class SessionManager(private val context: Context) {
         val ACCESS_TOKEN = stringPreferencesKey("access_token")
         val REFRESH_TOKEN = stringPreferencesKey("refresh_token")
         val IS_LOGGED_IN = booleanPreferencesKey("is_logged_in")
+        val USER_ID = stringPreferencesKey("user_id")
         val NOMBRE = stringPreferencesKey("nombre")
         val USUARIO = stringPreferencesKey("usuario")
         val EMAIL = stringPreferencesKey("email")
@@ -52,6 +53,7 @@ class SessionManager(private val context: Context) {
             } else {
                 AuthSession(
                     usuario = UsuarioSesion(
+                        id = prefs[Keys.USER_ID] ?: "",
                         nombre = prefs[Keys.NOMBRE] ?: "",
                         usuario = prefs[Keys.USUARIO] ?: "",
                         email = prefs[Keys.EMAIL] ?: "",
@@ -71,6 +73,7 @@ class SessionManager(private val context: Context) {
     suspend fun guardarSesion(usuario: UsuarioSesion, accessToken: String?, refreshToken: String?) {
         context.sessionDataStore.edit { prefs ->
             prefs[Keys.IS_LOGGED_IN] = true
+            prefs[Keys.USER_ID] = usuario.id
             prefs[Keys.NOMBRE] = usuario.nombre
             prefs[Keys.USUARIO] = usuario.usuario
             prefs[Keys.EMAIL] = usuario.email
@@ -103,6 +106,16 @@ class SessionManager(private val context: Context) {
         return context.sessionDataStore.data
             .catch { emit(emptyPreferences()) }
             .first()[Keys.ACCESS_TOKEN]
+    }
+
+    /**
+     * Devuelve el UUID del usuario logueado (o null). Necesario para consultar
+     * datos propios como "mi valoración" de un punto.
+     */
+    suspend fun obtenerUserId(): String? {
+        return context.sessionDataStore.data
+            .catch { emit(emptyPreferences()) }
+            .first()[Keys.USER_ID]
     }
 
     /**

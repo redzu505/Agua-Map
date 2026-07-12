@@ -1,6 +1,7 @@
 package com.aguamap.app.domain
 
 data class UsuarioSesion(
+    val id: String = "",          // UUID de auth.users (necesario para valoraciones, etc.)
     val nombre: String = "",
     val usuario: String = "",
     val email: String = "",

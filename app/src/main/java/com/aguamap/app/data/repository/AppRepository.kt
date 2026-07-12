@@ -154,6 +154,31 @@ class AppRepository(
     }
 
     // ==========================================
+    // SECCIÓN: VALORACIONES (puntaje 1-5)
+    // ==========================================
+
+    /**
+     * Registra o modifica la valoración del usuario para un punto.
+     * El promedio del punto lo recalcula un trigger en Supabase.
+     */
+    suspend fun valorarPunto(pointId: String, valor: Int): Result<Unit> {
+        val token = sessionManager.obtenerAccessToken()
+            ?: return Result.failure(Exception("Debes iniciar sesión para valorar"))
+        return remoteDataSource.valorarPunto(token, pointId, valor)
+    }
+
+    /**
+     * Devuelve la valoración que el usuario ya dio a un punto (o null si no votó
+     * o si es invitado / no hay sesión).
+     */
+    suspend fun getMiValoracion(pointId: String): Int? {
+        val token = sessionManager.obtenerAccessToken() ?: return null
+        val userId = sessionManager.obtenerUserId()
+        if (userId.isNullOrBlank()) return null
+        return remoteDataSource.getMiValoracion(token, userId, pointId).getOrNull()
+    }
+
+    // ==========================================
     // SECCIÓN: REPORTES
     // ==========================================
 

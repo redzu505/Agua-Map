@@ -160,6 +160,29 @@ interface SupabaseApiService {
     ): Response<ResponseBody>
 
     // ==========================================
+    // VALORACIONES (tabla: valoraciones) — puntaje 1-5 por punto
+    // ==========================================
+    // Lee MI valoración de un punto (filtra por punto y por mi user_id)
+    @GET("rest/v1/valoraciones")
+    suspend fun getMiValoracion(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Query("punto_id") puntoId: String,       // "eq.<id>"
+        @Query("user_id") userId: String,         // "eq.<uuid>"
+        @Query("select") select: String = "valor"
+    ): Response<List<ValoracionDto>>
+
+    // Crea o MODIFICA mi valoración (upsert sobre la restricción única user_id+punto_id)
+    @POST("rest/v1/valoraciones")
+    suspend fun valorarPunto(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Header("Prefer") prefer: String = "resolution=merge-duplicates,return=minimal",
+        @Query("on_conflict") onConflict: String = "user_id,punto_id",
+        @Body valoracion: ValoracionDto
+    ): Response<ResponseBody>
+
+    // ==========================================
     // STORAGE (subir foto de un reporte al bucket "reportes")
     // ==========================================
     @POST("storage/v1/object/{bucket}/{path}")

@@ -62,3 +62,9 @@ data class FavoritoDto(
 data class PerfilDto(
     val rol: String? = null
 )
+
+// ---------- VALORACIONES (puntaje 1-5 de un punto) ----------
+data class ValoracionDto(
+    @SerializedName("punto_id") val puntoId: String? = null,
+    val valor: Int? = null
+)

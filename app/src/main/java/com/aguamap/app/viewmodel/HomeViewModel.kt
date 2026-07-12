@@ -32,6 +32,10 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
     private val _reports = MutableStateFlow<List<WaterPointReport>>(emptyList())
     val reports: StateFlow<List<WaterPointReport>> = _reports
 
+    // Valoración (1-5) que el usuario dio al punto que está viendo. null = aún no vota.
+    private val _miValoracion = MutableStateFlow<Int?>(null)
+    val miValoracion: StateFlow<Int?> = _miValoracion
+
     private val _news = MutableStateFlow<List<CommunityNews>>(emptyList())
     val news: StateFlow<List<CommunityNews>> = _news
 
@@ -107,6 +111,22 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
         viewModelScope.launch {
             _comments.value = repository.getComments(pointId)
             _reports.value = repository.getReports(pointId)
+            _miValoracion.value = repository.getMiValoracion(pointId)
+        }
+    }
+
+    /**
+     * Registra/modifica la valoración del usuario para un punto. Tras votar,
+     * recarga los puntos para reflejar el nuevo promedio (lo recalcula Supabase).
+     */
+    fun valorarPunto(pointId: String, valor: Int) {
+        viewModelScope.launch {
+            val resultado = repository.valorarPunto(pointId, valor)
+            resultado.onSuccess {
+                _miValoracion.value = valor
+                // Recargamos los puntos para traer la calificación promedio actualizada
+                _waterPoints.value = repository.getWaterPoints()
+            }
         }
     }
 
