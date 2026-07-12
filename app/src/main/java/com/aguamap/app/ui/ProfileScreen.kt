@@ -390,7 +390,6 @@ fun SettingsSection(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // "Ajustes" abre el editor de perfil (solo tiene sentido si no es invitado)
         SettingsItem(Icons.Default.Settings, "Editar perfil", primary, onClick = { if (!isGuest) onEditProfile() })
-        SettingsItem(Icons.Default.Shield, "Privacidad", primary)
         Spacer(modifier = Modifier.height(8.dp))
 
         // Botón de Acción Principal (Iniciar o Cerrar Sesión)
