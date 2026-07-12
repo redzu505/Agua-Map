@@ -173,9 +173,34 @@ class AppRepository(
      */
     suspend fun getMiValoracion(pointId: String): Int? {
         val token = sessionManager.obtenerAccessToken() ?: return null
-        val userId = sessionManager.obtenerUserId()
-        if (userId.isNullOrBlank()) return null
+        val userId = obtenerUserIdActual(token) ?: return null
         return remoteDataSource.getMiValoracion(token, userId, pointId).getOrNull()
+    }
+
+    /**
+     * UUID del usuario actual. Usa el guardado en sesión; si está vacío (por ejemplo,
+     * una sesión creada antes de que se guardara el id), lo extrae del propio token
+     * JWT (claim "sub"). Así el conteo/valoraciones funcionan sin obligar a re-loguear.
+     */
+    private suspend fun obtenerUserIdActual(token: String): String? {
+        val guardado = sessionManager.obtenerUserId()
+        if (!guardado.isNullOrBlank()) return guardado
+        return extraerSubDelToken(token)
+    }
+
+    private fun extraerSubDelToken(token: String): String? {
+        return try {
+            val partes = token.split(".")
+            if (partes.size < 2) return null
+            val payload = android.util.Base64.decode(
+                partes[1],
+                android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING
+            )
+            val json = org.json.JSONObject(String(payload, Charsets.UTF_8))
+            json.optString("sub").ifBlank { null }
+        } catch (e: Exception) {
+            null
+        }
     }
 
     /**
@@ -184,8 +209,7 @@ class AppRepository(
      */
     suspend fun getEstadisticasUsuario(): Pair<Int, Int> {
         val token = sessionManager.obtenerAccessToken() ?: return 0 to 0
-        val userId = sessionManager.obtenerUserId()
-        if (userId.isNullOrBlank()) return 0 to 0
+        val userId = obtenerUserIdActual(token) ?: return 0 to 0
         val reportes = remoteDataSource.contarReportesUsuario(token, userId)
         val comentarios = remoteDataSource.contarComentariosUsuario(token, userId)
         return reportes to comentarios
