@@ -9,6 +9,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -23,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
@@ -185,8 +187,12 @@ fun LoginView(
     onRegisterClick: () -> Unit,   //
     onLoginSuccess: () -> Unit
 ) {
-    var userId by remember { mutableStateOf("") }
+    var correo by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    // Mensajes de error por campo (null = válido / aún sin validar)
+    var correoError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
 
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
@@ -218,8 +224,25 @@ fun LoginView(
 
         Spacer(modifier = Modifier.height(40.dp))
 
-        AuthTextField(value = userId, onValueChange = { userId = it }, label = "Usuario o Correo", icon = Icons.Default.Person)
-        AuthTextField(value = password, onValueChange = { password = it }, label = "Contraseña", icon = Icons.Default.Lock, isPassword = true)
+        AuthTextField(
+            value = correo,
+            onValueChange = { correo = it; correoError = null },
+            label = "Correo",
+            icon = Icons.Default.Email,
+            keyboardType = KeyboardType.Email,
+            isError = correoError != null,
+            errorMessage = correoError
+        )
+        AuthTextField(
+            value = password,
+            onValueChange = { password = it; passwordError = null },
+            label = "Contraseña",
+            icon = Icons.Default.Lock,
+            isPassword = true,
+            keyboardType = KeyboardType.Password,
+            isError = passwordError != null,
+            errorMessage = passwordError
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -240,14 +263,23 @@ fun LoginView(
         } else {
             Button(
                 onClick = {
-                    if (userId.isNotBlank() && password.isNotBlank()) {
+                    // Validación de correo y contraseña antes de enviar
+                    correoError = when {
+                        correo.isBlank() -> "Ingresa tu correo"
+                        !android.util.Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches() ->
+                            "Correo no válido"
+                        else -> null
+                    }
+                    passwordError = if (password.isBlank()) "Ingresa tu contraseña" else null
+
+                    if (correoError == null && passwordError == null) {
                         // Enviamos los datos para validar en el ViewModel
                         authViewModel.iniciarSesion(
-                            email = userId.trim(),
+                            email = correo.trim(),
                             contrasenia = password.trim()
                         )
                     } else {
-                        Toast.makeText(context, "Por favor, llena todos los campos", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Revisa los campos marcados", Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -341,6 +373,14 @@ fun RegisterView(
     var userId by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
 
+    // Mensajes de error por campo (null = campo válido / aún sin validar)
+    var nombreError by remember { mutableStateOf<String?>(null) }
+    var dniError by remember { mutableStateOf<String?>(null) }
+    var correoError by remember { mutableStateOf<String?>(null) }
+    var telefonoError by remember { mutableStateOf<String?>(null) }
+    var usuarioError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
     val context = LocalContext.current
@@ -371,12 +411,62 @@ fun RegisterView(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        AuthTextField(nombre, { nombre = it }, "Nombre completo", Icons.Default.Badge)
-        AuthTextField(dni, { dni = it }, "DNI", Icons.Default.Fingerprint)
-        AuthTextField(correo, { correo = it }, "Correo electrónico", Icons.Default.Email)
-        AuthTextField(telefono, { telefono = it }, "Teléfono", Icons.Default.Phone)
-        AuthTextField(userId, { userId = it }, "Nombre de usuario", Icons.Default.Person)
-        AuthTextField(password, { password = it }, "Contraseña", Icons.Default.Lock, isPassword = true)
+        AuthTextField(
+            value = nombre,
+            onValueChange = { nombre = it; nombreError = null },
+            label = "Nombre completo",
+            icon = Icons.Default.Badge,
+            isError = nombreError != null,
+            errorMessage = nombreError
+        )
+        AuthTextField(
+            value = dni,
+            // Solo dígitos, máximo 8 (DNI peruano)
+            onValueChange = { dni = it.filter { c -> c.isDigit() }.take(8); dniError = null },
+            label = "DNI",
+            icon = Icons.Default.Fingerprint,
+            keyboardType = KeyboardType.Number,
+            isError = dniError != null,
+            errorMessage = dniError
+        )
+        AuthTextField(
+            value = correo,
+            onValueChange = { correo = it; correoError = null },
+            label = "Correo electrónico",
+            icon = Icons.Default.Email,
+            keyboardType = KeyboardType.Email,
+            isError = correoError != null,
+            errorMessage = correoError
+        )
+        AuthTextField(
+            value = telefono,
+            // Solo dígitos, máximo 9 (móvil peruano)
+            onValueChange = { telefono = it.filter { c -> c.isDigit() }.take(9); telefonoError = null },
+            label = "Teléfono",
+            icon = Icons.Default.Phone,
+            keyboardType = KeyboardType.Phone,
+            isError = telefonoError != null,
+            errorMessage = telefonoError
+        )
+        AuthTextField(
+            value = userId,
+            // Usuario sin espacios
+            onValueChange = { userId = it.filter { c -> !c.isWhitespace() }; usuarioError = null },
+            label = "Nombre de usuario",
+            icon = Icons.Default.Person,
+            isError = usuarioError != null,
+            errorMessage = usuarioError
+        )
+        AuthTextField(
+            value = password,
+            onValueChange = { password = it; passwordError = null },
+            label = "Contraseña",
+            icon = Icons.Default.Lock,
+            isPassword = true,
+            keyboardType = KeyboardType.Password,
+            isError = passwordError != null,
+            errorMessage = passwordError
+        )
 
         Spacer(modifier = Modifier.height(32.dp))
 
@@ -386,7 +476,36 @@ fun RegisterView(
         } else {
             Button(
                 onClick = {
-                    if (correo.isNotBlank() && password.isNotBlank() && nombre.isNotBlank()) {
+                    // Validación por campo. Devuelve el mensaje de error o null si es válido.
+                    nombreError = if (nombre.isBlank()) "Ingresa tu nombre completo" else null
+                    correoError = when {
+                        correo.isBlank() -> "Ingresa tu correo"
+                        !android.util.Patterns.EMAIL_ADDRESS.matcher(correo.trim()).matches() ->
+                            "Correo no válido"
+                        else -> null
+                    }
+                    dniError = when {
+                        dni.isBlank() -> "Ingresa tu DNI"
+                        dni.length != 8 -> "El DNI debe tener 8 dígitos"
+                        else -> null
+                    }
+                    telefonoError = when {
+                        telefono.isBlank() -> "Ingresa tu teléfono"
+                        telefono.length != 9 -> "El teléfono debe tener 9 dígitos"
+                        else -> null
+                    }
+                    usuarioError = if (userId.isBlank()) "Ingresa un nombre de usuario" else null
+                    passwordError = when {
+                        password.isBlank() -> "Ingresa una contraseña"
+                        password.length < 6 -> "Mínimo 6 caracteres"
+                        else -> null
+                    }
+
+                    val todoValido = nombreError == null && correoError == null &&
+                        dniError == null && telefonoError == null &&
+                        usuarioError == null && passwordError == null
+
+                    if (todoValido) {
                         authViewModel.registrarUsuario(
                             email = correo.trim(),
                             contrasenia = password.trim(),
@@ -396,7 +515,7 @@ fun RegisterView(
                             usuario = userId.trim()
                         )
                     } else {
-                        Toast.makeText(context, "Por favor, llena los campos obligatorios", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Revisa los campos marcados", Toast.LENGTH_SHORT).show()
                     }
                 },
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -431,7 +550,10 @@ fun AuthTextField(
     onValueChange: (String) -> Unit,
     label: String,
     icon: ImageVector,
-    isPassword: Boolean = false
+    isPassword: Boolean = false,
+    keyboardType: KeyboardType = KeyboardType.Text,
+    isError: Boolean = false,
+    errorMessage: String? = null
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
@@ -443,6 +565,11 @@ fun AuthTextField(
         leadingIcon = { Icon(icon, contentDescription = null, tint = secondary) },
         modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
+        isError = isError,
+        supportingText = if (isError && errorMessage != null) {
+            { Text(errorMessage) }
+        } else null,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         visualTransformation = if (isPassword) PasswordVisualTransformation() else androidx.compose.ui.text.input.VisualTransformation.None,
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = MaterialTheme.colorScheme.surface,
