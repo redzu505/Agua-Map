@@ -1,0 +1,20 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Borde blanco para que la gota resalte sobre las calles del mapa -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:fillColor="@color/water_drop_blue"
+        android:pathData="M12,2C6.67,6.55 4,10.1 4,13.18C4,18.17 7.58,22 12,22S20,18.17 20,13.18C20,10.1 17.33,6.55 12,2Z"/>
+
+    <!-- Brillo/reflejo interno (mismo trazo que el logo de la app) -->
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeLineCap="round"
+        android:pathData="M8.5,13.5C8.5,16 10,17.5 12.5,17.5" />
+</vector>

@@ -1,6 +1,11 @@
 package com.aguamap.app.ui.components
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import androidx.core.content.ContextCompat
+import com.aguamap.app.R
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -16,6 +21,8 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import org.maplibre.android.MapLibre
+import org.maplibre.android.annotations.Icon
+import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.annotations.PolylineOptions
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -80,7 +87,7 @@ fun MapLibreView(
         
         // Esperamos a que el estilo esté cargado antes de manipular el mapa
         if (map.style?.isFullyLoaded == true) {
-            updateMarkers(map, waterPoints)
+            updateMarkers(map, waterPoints, context)
             
             // Si hay ubicación de usuario y destino, dibujamos la ruta
             if (userLocation != null && routeDestination != null) {
@@ -100,7 +107,7 @@ fun MapLibreView(
                     map.setStyle("https://tiles.openfreemap.org/styles/liberty") { style ->
                         
                         // Añadir marcadores iniciales
-                        updateMarkers(map, waterPoints)
+                        updateMarkers(map, waterPoints, context)
 
                         // Configurar listener de clicks
                         map.setOnMarkerClickListener { marker ->
@@ -148,17 +155,36 @@ fun MapLibreView(
 
 /**
  * Función auxiliar para limpiar y añadir marcadores de forma segura.
+ * Cada punto usa el logo de gota de agua de la app en lugar del pin clásico.
  */
-private fun updateMarkers(map: MapLibreMap, waterPoints: List<WaterPoint>) {
+private fun updateMarkers(map: MapLibreMap, waterPoints: List<WaterPoint>, context: Context) {
     map.clear()
+    // Construimos el icono una sola vez y lo reutilizamos en todos los marcadores
+    val waterIcon = iconFromVector(context, R.drawable.ic_water_marker)
     waterPoints.forEach { point ->
-        map.addMarker(
-            MarkerOptions()
-                .position(LatLng(point.latitude, point.longitude))
-                .title(point.name)
-                .snippet(point.id)
-        )
+        val options = MarkerOptions()
+            .position(LatLng(point.latitude, point.longitude))
+            .title(point.name)
+            .snippet(point.id)
+        // Si por algún motivo no se pudo generar el icono, dejamos el pin por defecto
+        if (waterIcon != null) options.icon(waterIcon)
+        map.addMarker(options)
     }
+}
+
+/**
+ * Convierte un drawable vectorial (la gota de AguaMap) en un Icon que MapLibre
+ * puede dibujar como marcador. Devuelve null si el recurso no se pudo cargar.
+ */
+private fun iconFromVector(context: Context, drawableRes: Int): Icon? {
+    val drawable = ContextCompat.getDrawable(context, drawableRes) ?: return null
+    val width = if (drawable.intrinsicWidth > 0) drawable.intrinsicWidth else 96
+    val height = if (drawable.intrinsicHeight > 0) drawable.intrinsicHeight else 96
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    drawable.setBounds(0, 0, canvas.width, canvas.height)
+    drawable.draw(canvas)
+    return IconFactory.getInstance(context).fromBitmap(bitmap)
 }
 
 /**
