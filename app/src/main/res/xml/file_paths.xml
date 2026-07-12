@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Carpeta de la caché interna donde se guardan las fotos tomadas para los reportes -->
+    <cache-path
+        name="report_photos"
+        path="report_photos/" />
+</paths>

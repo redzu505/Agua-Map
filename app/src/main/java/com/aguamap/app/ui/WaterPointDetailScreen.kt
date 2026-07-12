@@ -1,9 +1,15 @@
 package com.aguamap.app.ui
 
+import android.content.Context
+import android.content.pm.PackageManager
 import android.location.Location
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -452,14 +458,58 @@ fun ReportDialog(
     onDismiss: () -> Unit,
     onSend: (ReportType, String, Uri?) -> Unit
 ) {
+    val context = LocalContext.current
+
     var selectedType by remember { mutableStateOf<ReportType?>(null) }
     var description by remember { mutableStateOf("") }
     var imageUri by remember { mutableStateOf<Uri?>(null) }
+
+    // Uri temporal donde la app de cámara escribirá la foto tomada
+    var cameraImageUri by remember { mutableStateOf<Uri?>(null) }
 
     // Selector de imagen de la galería del teléfono
     val imagePicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri -> imageUri = uri }
+
+    // Lanzador de la cámara: si la captura fue exitosa, usamos la foto tomada
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { exito ->
+        if (exito) imageUri = cameraImageUri
+    }
+
+    // Lanzador del permiso de cámara: si se concede, abrimos la cámara al instante
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { concedido ->
+        if (concedido) {
+            val uri = crearUriTemporalFoto(context)
+            cameraImageUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            Toast.makeText(
+                context,
+                "Necesitas dar permiso de cámara para tomar la foto",
+                Toast.LENGTH_LONG
+            ).show()
+        }
+    }
+
+    // Abre la cámara pidiendo permiso solo si aún no está concedido
+    fun abrirCamara() {
+        val permisoConcedido = ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+
+        if (permisoConcedido) {
+            val uri = crearUriTemporalFoto(context)
+            cameraImageUri = uri
+            cameraLauncher.launch(uri)
+        } else {
+            cameraPermissionLauncher.launch(android.Manifest.permission.CAMERA)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -534,18 +584,44 @@ fun ReportDialog(
                         Text(stringResource(R.string.report_remove_photo), color = Color.Gray)
                     }
                 } else {
-                    OutlinedButton(
-                        onClick = { imagePicker.launch("image/*") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Icon(Icons.Default.PhotoCamera, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(stringResource(R.string.report_attach_photo))
+                    // Dos opciones: tomar una foto con la cámara o elegir una de la galería
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(
+                            onClick = { abrirCamara() },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = null)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Cámara", fontSize = 13.sp)
+                        }
+                        OutlinedButton(
+                            onClick = { imagePicker.launch("image/*") },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Icon(Icons.Default.Image, contentDescription = null)
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Galería", fontSize = 13.sp)
+                        }
                     }
                 }
             }
         }
+    )
+}
+
+/**
+ * Crea un archivo temporal en la caché interna y devuelve una Uri segura (FileProvider)
+ * que la app de cámara puede usar para escribir la foto tomada.
+ */
+private fun crearUriTemporalFoto(context: Context): Uri {
+    val carpeta = File(context.cacheDir, "report_photos").apply { mkdirs() }
+    val archivo = File(carpeta, "captura_${UUID.randomUUID()}.jpg")
+    return FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.provider",
+        archivo
     )
 }
 

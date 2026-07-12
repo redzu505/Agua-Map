@@ -23,6 +23,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -381,6 +384,11 @@ fun RegisterView(
     var usuarioError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
 
+    // Aceptación de términos y condiciones (obligatorio para registrarse)
+    var aceptaTerminos by remember { mutableStateOf(false) }
+    // Controla la visibilidad del modal de términos y condiciones
+    var mostrarDialogoTerminos by remember { mutableStateOf(false) }
+
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
     val context = LocalContext.current
@@ -468,13 +476,59 @@ fun RegisterView(
             errorMessage = passwordError
         )
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Términos y condiciones: sin marcar esta casilla no se puede registrar.
+        // Para marcarla hay que abrir el modal y pulsar "Acepto".
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(
+                checked = aceptaTerminos,
+                onCheckedChange = { marcado ->
+                    if (marcado) {
+                        // Para aceptar primero debe leer el modal
+                        mostrarDialogoTerminos = true
+                    } else {
+                        // Permitimos desmarcar directamente
+                        aceptaTerminos = false
+                    }
+                },
+                colors = CheckboxDefaults.colors(checkedColor = secondary)
+            )
+            Text(
+                buildAnnotatedString {
+                    append("Acepto los ")
+                    withStyle(SpanStyle(color = secondary, fontWeight = FontWeight.Bold)) {
+                        append("Términos y Condiciones")
+                    }
+                },
+                color = primary.copy(alpha = 0.8f),
+                fontSize = 14.sp,
+                modifier = Modifier.clickable { mostrarDialogoTerminos = true }
+            )
+        }
+
+        // Modal con el contenido completo de los términos
+        if (mostrarDialogoTerminos) {
+            TerminosCondicionesDialog(
+                onAceptar = {
+                    aceptaTerminos = true
+                    mostrarDialogoTerminos = false
+                },
+                onCerrar = { mostrarDialogoTerminos = false }
+            )
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
 
         // Si está cargando, cambiamos el botón por un indicador de carga circular
         if (registerState is RegisterState.Loading) {
             CircularProgressIndicator(color = secondary)
         } else {
             Button(
+                enabled = aceptaTerminos,
                 onClick = {
                     // Validación por campo. Devuelve el mensaje de error o null si es válido.
                     nombreError = if (nombre.isBlank()) "Ingresa tu nombre completo" else null
@@ -528,6 +582,136 @@ fun RegisterView(
 
         Spacer(modifier = Modifier.height(24.dp))
     }
+}
+
+/**
+ * Modal con los Términos y Condiciones de AguaMap.
+ * El usuario debe pulsar "Acepto" para poder continuar con el registro.
+ */
+@Composable
+fun TerminosCondicionesDialog(
+    onAceptar: () -> Unit,
+    onCerrar: () -> Unit
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+
+    val introduccion =
+        "Los presentes Términos y Condiciones regulan de forma vinculante el acceso y uso " +
+        "de la aplicación móvil AguaMap (en adelante, \"la Aplicación\"), desarrollada como un " +
+        "proyecto de ingeniería de software con fines estrictamente académicos e informativos. " +
+        "Al acceder, registrarse o interactuar con la Aplicación, el usuario acepta de manera " +
+        "expresa y sin reservas todas las estipulaciones descritas en este documento."
+
+    // Cada sección es (título, cuerpo)
+    val secciones = listOf(
+        "1. Naturaleza del Servicio y Limitación de Responsabilidad Académica" to
+            "Ámbito del Proyecto: El usuario reconoce que AguaMap es un prototipo funcional en fase " +
+            "de desarrollo. La información cartográfica sobre puntos de abastecimiento, horarios o " +
+            "estados operativos se genera de manera colaborativa (crowdsourcing) y mediante " +
+            "simulaciones controladas.\n\n" +
+            "Exclusión de SEDAPAL o Entidades Oficiales: La Aplicación no guarda relación jurídica, " +
+            "comercial ni oficial con SEDAPAL ni con el Ministerio de Vivienda, Construcción y " +
+            "Saneamiento. Los desarrolladores no se hacen responsables por decisiones vecinales " +
+            "tomadas con base en la disponibilidad o calidad del agua mostrada en la interfaz.",
+
+        "2. Registro de Cuenta y Jerarquía de Roles" to
+            "Veracidad de las Credenciales: Para adquirir el rol de \"Ciudadano Registrado\" y emitir " +
+            "reportes de fallas, el usuario debe proveer datos mínimos obligatorios (nombre, correo " +
+            "electrónico y DNI). El usuario es el único responsable de la confidencialidad de sus " +
+            "credenciales de acceso autenticadas mediante Supabase Auth.\n\n" +
+            "Uso del Rol de Invitado: Los usuarios que opten por el acceso en rol de \"Invitado\" " +
+            "operarán bajo una modalidad de solo lectura, no estando facultados para emitir reportes, " +
+            "comentarios ni valoraciones hídricas.",
+
+        "3. Reglas de Negocio y Georreferenciación Obligatoria" to
+            "Validación de Proximidad por GPS: Al enviar una alerta o reporte de avería física hídrica, " +
+            "el usuario acepta que la Aplicación acceda temporalmente al sensor GPS de su terminal. El " +
+            "envío del formulario queda condicionado por un algoritmo perimetral que exige una " +
+            "proximidad física inferior a 100 metros respecto al pozo o contenedor georreferenciado.\n\n" +
+            "Captura de Evidencia Fotográfica: El registro de incidencias hídricas críticas exige " +
+            "capturar una fotografía en tiempo real desde la cámara del terminal. El usuario asume toda " +
+            "la responsabilidad civil y penal por las imágenes capturadas, prohibiéndose la carga de " +
+            "archivos ajenos a la avería o que vulneren derechos de terceros.",
+
+        "4. Política de Moderación Léxica y Uso Comunitario" to
+            "Moderación Automatizada: El software cuenta con filtros lógicos integrados que examinan " +
+            "los campos de comentarios y descripciones de fallas. Queda prohibida la inserción de " +
+            "lenguaje ofensivo, insultos, difamaciones o expresiones que atenten contra las normas " +
+            "comunitarias vecinales.\n\n" +
+            "Sanciones por Falsificación: El equipo administrador se reserva el derecho de suspender " +
+            "temporal o definitivamente las cuentas de aquellos ciudadanos que simulen repetitivamente " +
+            "coordenadas falsas o emitan reportes deliberadamente erróneos.",
+
+        "5. Privacidad y Tratamiento de Datos Personales (Privacy by Design)" to
+            "Cumplimiento de la Ley N° 29733: Toda la información recolectada es tratada bajo principios " +
+            "estrictos de confidencialidad y minimización de identidades. Las contraseñas se almacenan " +
+            "mediante hashes encriptados inaccesibles en el servidor central de Supabase.\n\n" +
+            "Gestión Efímera del GPS: La geolocalización se lee de forma efímera únicamente en el " +
+            "instante preciso de la transacción del reporte vecinal. La Aplicación bajo ninguna " +
+            "circunstancia rastrea movimientos en segundo plano ni almacena un histórico geográfico de " +
+            "las rutas de los usuarios.",
+
+        "6. Modificaciones de los Términos" to
+            "Al tratarse de una iteración ágil bajo el marco Scrum, los desarrolladores se reservan la " +
+            "facultad de modificar o escalar las reglas técnicas, funcionales y lógicas de este " +
+            "documento con el fin de optimizar el rendimiento y la interoperabilidad de la base de " +
+            "datos distribuida."
+    )
+
+    AlertDialog(
+        onDismissRequest = onCerrar,
+        title = {
+            Text(
+                "Términos y Condiciones de Uso",
+                fontWeight = FontWeight.Bold,
+                color = primary,
+                fontSize = 20.sp
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .heightIn(max = 380.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                Text(
+                    introduccion,
+                    fontSize = 13.sp,
+                    color = primary.copy(alpha = 0.85f)
+                )
+                secciones.forEach { (titulo, cuerpo) ->
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        titulo,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = secondary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        cuerpo,
+                        fontSize = 13.sp,
+                        color = primary.copy(alpha = 0.85f)
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onAceptar,
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = secondary)
+            ) {
+                Text("Acepto", fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCerrar) {
+                Text("Cerrar", color = primary)
+            }
+        }
+    )
 }
 
 @Composable
