@@ -4,7 +4,8 @@ data class UserPreferences(
     val selectedSector: String = "Todos",
     val isHighContrast: Boolean = false,
     val searchRadius: Float = 1.0f,
-    val isAnonymous: Boolean = false
+    val isAnonymous: Boolean = false,
+    val isDarkMode: Boolean = false   // Modo oscuro (con nuestra paleta Ocean & Cloud)
 )
 
 val SJL_SECTORS = listOf(

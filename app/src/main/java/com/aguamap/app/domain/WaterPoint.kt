@@ -43,7 +43,8 @@ data class WaterPointReport(
     val pointId: String,
     val type: ReportType,
     val description: String,
-    val date: String
+    val date: String,
+    val imageUrl: String? = null
 )
 
 enum class ReportType(val displayName: String) {

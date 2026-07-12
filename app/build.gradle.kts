@@ -1,7 +1,22 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
+
+// Leemos las credenciales de Supabase desde local.properties (no se versiona).
+// Si no existen, usamos los valores por defecto para que el build nunca se rompa.
+val localProperties = Properties().apply {
+    val localFile = rootProject.file("local.properties")
+    if (localFile.exists()) {
+        localFile.inputStream().use { load(it) }
+    }
+}
+val supabaseUrl: String =
+    localProperties.getProperty("SUPABASE_URL") ?: ""
+val supabaseAnonKey: String =
+    localProperties.getProperty("SUPABASE_ANON_KEY") ?: ""
 
 android {
     namespace = "com.aguamap.app"
@@ -19,6 +34,10 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // Credenciales de Supabase expuestas de forma segura vía BuildConfig
+        buildConfigField("String", "SUPABASE_URL", "\"$supabaseUrl\"")
+        buildConfigField("String", "SUPABASE_ANON_KEY", "\"$supabaseAnonKey\"")
     }
 
     buildTypes {
@@ -36,6 +55,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         jniLibs {
@@ -65,6 +85,15 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.11.0")
     // Convertidor de Gson (para que Retrofit entienda los archivos JSON automáticamente)
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+    // OkHttp explícito (4.x) para subir imágenes a Supabase Storage con RequestBody
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Interceptor de logging: muestra en Logcat cada petición/respuesta a Supabase
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // WorkManager para sincronización offline (Sprint 3)
+    val work_version = "2.10.0"
+    implementation("androidx.work:work-runtime-ktx:$work_version")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

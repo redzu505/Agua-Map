@@ -1,6 +1,7 @@
 package com.aguamap.app.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -16,12 +17,16 @@ import com.aguamap.app.viewmodel.AuthViewModel
 import com.aguamap.app.viewmodel.HomeViewModel
 
 @Composable
-fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
+fun AppNavigation(
+    homeViewModel: HomeViewModel,
+    authViewModel: AuthViewModel,
+    startDestination: String = Screen.Login.route
+) {
     val navController = rememberNavController()
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Login.route
+        startDestination = startDestination
     ) {
         composable(Screen.Login.route) {
             // Nota: Si tu LoginScreen tiene un botón de "Entrar como Invitado",
@@ -69,6 +74,11 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
             // 2.Obtenemos el objeto completo del usuario desde el AuthViewModel
             val usuario = authViewModel.usuarioLogueado.collectAsState().value
 
+            // Informamos al HomeViewModel quién es el usuario (para firmar los comentarios)
+            LaunchedEffect(usuario) {
+                homeViewModel.setCurrentUser(usuario?.nombre)
+            }
+
             //Línea de control: BORRRAR
             println("AGUAMAP_DEBUG: El valor de isGuestUser en el Home es: $isGuestUser")
             println("AGUAMAP_DEBUG: El usuario en sesión es: ${usuario?.nombre ?: "Ninguno (Invitado)"}")
@@ -76,8 +86,11 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
             HomeScreen(
                 homeViewModel = homeViewModel,
                 isGuest = isGuestUser, // Le enviamos el estado al HomeScreen
+                isAdmin = usuario?.rol == "admin", // Solo el admin puede crear puntos
                 userName = usuario?.nombre ?: "Usuario",   // ◄ NUEVO: Si es nulo (invitado), usa "Usuario" por defecto
                 userEmail = usuario?.email ?: "",           // ◄ NUEVO: Si es nulo, queda vacío
+                userPhone = usuario?.telefono ?: "",         // ◄ Para precargar el editor de perfil
+                onSaveProfile = { nombre, telefono -> authViewModel.actualizarDatosUsuario(nombre, telefono) },
                 // 2. Pasamos el valor dinámicamente en la ruta del perfil ◄ AQUÍ SE HACE LA MAGIA
                 onNavigateToProfile = { navController.navigate("profile/$isGuestUser") },
                 onNavigateToCommunity = { navController.navigate("community") },
@@ -111,6 +124,17 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
             //Obtenemos el usuario aquí también para la ruta directa
             val usuario = authViewModel.usuarioLogueado.collectAsState().value
 
+            // Puntos guardados (favoritos) resueltos a sus puntos de agua
+            val favoritos = homeViewModel.favoritos.collectAsState().value
+            val puntos = homeViewModel.waterPoints.collectAsState().value
+            val savedPoints = puntos.filter { it.id in favoritos }
+
+            // Estadísticas reales de actividad (reportes, comentarios)
+            val estadisticas = homeViewModel.estadisticas.collectAsState().value
+            LaunchedEffect(usuario?.id, isGuest) {
+                if (!isGuest) homeViewModel.cargarEstadisticasUsuario()
+            }
+
             //pruebas: BORRRAR LINEA LN
 
             println("AGUAMAP_DEBUG: El perfil recibió el argumento isGuest = $isGuest")
@@ -119,6 +143,14 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
                 isGuest = isGuest,
                 userName = usuario?.nombre ?: "Usuario", // Pasamos el nombre real o default
                 userEmail = usuario?.email ?: "",       // Pasamos el correo real o vacío
+                userPhone = usuario?.telefono ?: "",     // Para precargar el editor de perfil
+                savedPoints = savedPoints,
+                puntosReportados = estadisticas.first,
+                comentariosRealizados = estadisticas.second,
+                onSaveProfile = { nombre, telefono -> authViewModel.actualizarDatosUsuario(nombre, telefono) },
+                onNavigateToDetail = { pointId ->
+                    navController.navigate(Screen.WaterPointDetail.createRoute(pointId))
+                },
                 onBack = { navController.popBackStack() },
                 onLoginClick = {
                     // Si es invitado y presiona iniciar sesión, lo regresamos a la pantalla de Login
@@ -136,7 +168,13 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
         }
 
         composable("community") {
-            CommunityScreen(homeViewModel = homeViewModel, onBack = { navController.popBackStack() })
+            CommunityScreen(
+                homeViewModel = homeViewModel,
+                onBack = { navController.popBackStack() },
+                onNavigateToDetail = { pointId ->
+                    navController.navigate(Screen.WaterPointDetail.createRoute(pointId))
+                }
+            )
         }
 
         composable(
@@ -144,9 +182,12 @@ fun AppNavigation(homeViewModel: HomeViewModel, authViewModel: AuthViewModel) {
             arguments = listOf(navArgument("pointId") { type = NavType.StringType })
         ) { backStackEntry ->
             val pointId = backStackEntry.arguments?.getString("pointId") ?: ""
+            // Sabemos si es invitado para bloquear comentar/reportar
+            val isGuestUser = authViewModel.isGuest.collectAsState().value
             WaterPointDetailScreen(
                 pointId = pointId,
                 homeViewModel = homeViewModel,
+                isGuest = isGuestUser,
                 onBack = { navController.popBackStack() }
             )
         }

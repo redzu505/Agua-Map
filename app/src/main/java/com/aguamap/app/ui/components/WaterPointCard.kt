@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.res.stringResource
@@ -55,7 +56,10 @@ fun WaterPointCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.weight(1f),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     // Image or Icon based on type
                     if (point.imageUrl != null) {
                         AsyncImage(
@@ -91,16 +95,22 @@ fun WaterPointCard(
                             text = point.name,
                             style = MaterialTheme.typography.titleMedium,
                             color = darkBlue,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
                         )
                         Text(
                             text = point.address,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.Gray
+                            color = Color.Gray,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
-                
+
+                Spacer(modifier = Modifier.width(8.dp))
+
                 // Status Badge
                 val statusColor = if (point.status == WaterPointStatus.OPERATIVO) 
                     Color(0xFF2E7D32) 
@@ -116,7 +126,9 @@ fun WaterPointCard(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         color = statusColor,
                         fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false
                     )
                 }
             }

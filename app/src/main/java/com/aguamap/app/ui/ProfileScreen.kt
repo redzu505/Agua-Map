@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -26,9 +27,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import com.aguamap.app.data.local.UserPreferencesRepository
 import com.aguamap.app.domain.SJL_SECTORS
 import com.aguamap.app.domain.UserPreferences
+import com.aguamap.app.domain.WaterPoint
+import com.aguamap.app.domain.WaterPointStatus
 import kotlinx.coroutines.launch
 
 @Composable
@@ -37,8 +41,14 @@ fun ProfileScreen(
     isGuest: Boolean = false,
     userName: String,
     userEmail: String,
+    userPhone: String = "",
+    savedPoints: List<WaterPoint> = emptyList(),
+    puntosReportados: Int = 0,
+    comentariosRealizados: Int = 0,
     onLoginClick: () -> Unit = {},
-    onLogoutClick: () -> Unit = {}
+    onLogoutClick: () -> Unit = {},
+    onSaveProfile: (String, String) -> Unit = { _, _ -> },
+    onNavigateToDetail: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -46,6 +56,20 @@ fun ProfileScreen(
     val userPreferences by repository.userPreferencesFlow.collectAsState(initial = UserPreferences())
 
     val colorScheme = MaterialTheme.colorScheme
+
+    // Control del diálogo "Editar perfil"
+    var showEditDialog by remember { mutableStateOf(false) }
+    if (showEditDialog) {
+        EditProfileDialog(
+            initialName = userName,
+            initialPhone = userPhone,
+            onDismiss = { showEditDialog = false },
+            onSave = { nombre, telefono ->
+                onSaveProfile(nombre, telefono)
+                showEditDialog = false
+            }
+        )
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(colorScheme.background)) {
         if (isGuest) {
@@ -93,7 +117,7 @@ fun ProfileScreen(
                     ProfileHeader(userName = userName, userEmail = userEmail)
                 }
 
-                item { ImpactSection() }
+                item { ImpactSection(puntosReportados = puntosReportados, comentariosRealizados = comentariosRealizados) }
 
                 item {
                     PreferencesSection(
@@ -101,14 +125,20 @@ fun ProfileScreen(
                         onSectorChange = { scope.launch { repository.updateSector(it) } },
                         onContrastChange = { scope.launch { repository.updateHighContrast(it) } },
                         onRadiusChange = { scope.launch { repository.updateRadius(it) } },
-                        onAnonymousChange = { scope.launch { repository.updateAnonymous(it) } }
+                        onAnonymousChange = { scope.launch { repository.updateAnonymous(it) } },
+                        onDarkModeChange = { scope.launch { repository.updateDarkMode(it) } }
                     )
                 }
 
-                item { SavedPointsSection() }
+                item { SavedPointsSection(savedPoints = savedPoints, onNavigateToDetail = onNavigateToDetail) }
 
                 item {
-                    SettingsSection(isGuest = isGuest, onLoginClick = onLoginClick, onLogoutClick = onLogoutClick)
+                    SettingsSection(
+                        isGuest = isGuest,
+                        onLoginClick = onLoginClick,
+                        onLogoutClick = onLogoutClick,
+                        onEditProfile = { showEditDialog = true }
+                    )
                 }
 
                 item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -243,7 +273,7 @@ fun ProfileHeader(userName: String, userEmail: String) {
 }
 
 @Composable
-fun ImpactSection() {
+fun ImpactSection(puntosReportados: Int, comentariosRealizados: Int) {
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
 
@@ -254,50 +284,19 @@ fun ImpactSection() {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             ImpactCard(
-                modifier = Modifier.weight(1f), 
-                icon = Icons.Default.AddLocation, 
-                value = "12",
-                label = "Puntos reportados", 
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.AddLocation,
+                value = puntosReportados.toString(),
+                label = "Puntos reportados",
                 accentColor = primary
             )
             ImpactCard(
-                modifier = Modifier.weight(1f), 
-                icon = Icons.Default.AddCircle,
-                value = "5",
-                label = "Puntos sugeridos", 
+                modifier = Modifier.weight(1f),
+                icon = Icons.AutoMirrored.Filled.Chat,
+                value = comentariosRealizados.toString(),
+                label = "Comentarios realizados",
                 accentColor = secondary
             )
-        }
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(2.dp)
-        ) {
-            Row(
-                modifier = Modifier.padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    color = Color(0xFF4CAF50).copy(alpha = 0.1f),
-                    shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.Chat, 
-                            contentDescription = null, 
-                            tint = Color(0xFF4CAF50)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(16.dp))
-                Column {
-                    Text("24", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = primary)
-                    Text("Comentarios realizados", fontSize = 14.sp, color = primary.copy(alpha = 0.6f))
-                }
-            }
         }
     }
 }
@@ -321,31 +320,34 @@ fun ImpactCard(modifier: Modifier, icon: ImageVector, value: String, label: Stri
 }
 
 @Composable
-fun SavedPointsSection() {
+fun SavedPointsSection(savedPoints: List<WaterPoint>, onNavigateToDetail: (String) -> Unit) {
     val primary = MaterialTheme.colorScheme.primary
-    val secondary = MaterialTheme.colorScheme.secondary
 
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text("Mis Puntos Guardados", color = primary.copy(alpha = 0.6f), fontSize = 16.sp, fontWeight = FontWeight.Medium)
-            Text("Ver todos", color = secondary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text("Mis Puntos Guardados", color = primary.copy(alpha = 0.6f), fontSize = 16.sp, fontWeight = FontWeight.Medium)
+
+        if (savedPoints.isEmpty()) {
+            Text(
+                "Aún no has guardado ningún punto. Abre un punto de agua y toca el marcador para guardarlo.",
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                fontSize = 13.sp
+            )
+        } else {
+            savedPoints.forEach { point ->
+                SavedPointItem(point = point, onClick = { onNavigateToDetail(point.id) })
+            }
         }
-        SavedPointItem("Fuente Parque Central", "Potable • 200m", Color(0xFF4CAF50))
-        SavedPointItem("Estación Eco-Sustentable", "Filtrada • 1.2km", Color(0xFF4CAF50))
     }
 }
 
 @Composable
-fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
+fun SavedPointItem(point: WaterPoint, onClick: () -> Unit) {
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
+    val statusColor = if (point.status == WaterPointStatus.OPERATIVO) Color(0xFF4CAF50) else Color(0xFFF44336)
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(1.dp)
@@ -359,24 +361,35 @@ fun SavedPointItem(title: String, subtitle: String, statusColor: Color) {
             }
             Spacer(modifier = Modifier.width(16.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(title, color = primary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(point.name, color = primary, fontWeight = FontWeight.Bold, fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(statusColor))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(subtitle, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f), fontSize = 14.sp)
+                    Text(
+                        "${point.type.displayName} • ${point.status.displayName}",
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        fontSize = 14.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
-            Icon(Icons.Default.Bookmark, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
+            Icon(Icons.Default.Bookmark, contentDescription = null, tint = secondary)
         }
     }
 }
 
 @Composable
-fun SettingsSection(isGuest: Boolean, onLoginClick: () -> Unit, onLogoutClick: () -> Unit) {
+fun SettingsSection(
+    isGuest: Boolean,
+    onLoginClick: () -> Unit,
+    onLogoutClick: () -> Unit,
+    onEditProfile: () -> Unit = {}
+) {
     val primary = MaterialTheme.colorScheme.primary
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        SettingsItem(Icons.Default.Settings, "Ajustes", primary)
-        SettingsItem(Icons.Default.Shield, "Privacidad", primary)
+        // "Ajustes" abre el editor de perfil (solo tiene sentido si no es invitado)
+        SettingsItem(Icons.Default.Settings, "Editar perfil", primary, onClick = { if (!isGuest) onEditProfile() })
         Spacer(modifier = Modifier.height(8.dp))
 
         // Botón de Acción Principal (Iniciar o Cerrar Sesión)
@@ -413,7 +426,8 @@ fun PreferencesSection(
     onSectorChange: (String) -> Unit,
     onContrastChange: (Boolean) -> Unit,
     onRadiusChange: (Float) -> Unit,
-    onAnonymousChange: (Boolean) -> Unit
+    onAnonymousChange: (Boolean) -> Unit,
+    onDarkModeChange: (Boolean) -> Unit = {}
 ) {
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
@@ -476,15 +490,61 @@ fun PreferencesSection(
                         colors = SliderDefaults.colors(thumbColor = secondary, activeTrackColor = secondary, inactiveTrackColor = secondary.copy(alpha = 0.2f))
                     )
                 }
+
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f))
+
+                // Apariencia: Modo oscuro y Alto contraste (blanco y negro)
+                PreferenceSwitchRow(
+                    title = "Modo oscuro",
+                    subtitle = "Tonos oscuros con la paleta de AguaMap",
+                    checked = preferences.isDarkMode,
+                    onCheckedChange = onDarkModeChange
+                )
+
+                PreferenceSwitchRow(
+                    title = "Alto contraste",
+                    subtitle = "Blanco y negro para mejor visibilidad",
+                    checked = preferences.isHighContrast,
+                    onCheckedChange = onContrastChange
+                )
             }
         }
     }
 }
 
 @Composable
-fun SettingsItem(icon: ImageVector, label: String, textColor: Color) {
+fun PreferenceSwitchRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit
+) {
+    val primary = MaterialTheme.colorScheme.primary
+    val secondary = MaterialTheme.colorScheme.secondary
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = primary)
+            Text(subtitle, fontSize = 12.sp, color = primary.copy(alpha = 0.6f))
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.onSecondary,
+                checkedTrackColor = secondary
+            )
+        )
+    }
+}
+
+@Composable
+fun SettingsItem(icon: ImageVector, label: String, textColor: Color, onClick: () -> Unit = {}) {
     Card(
-        modifier = Modifier.fillMaxWidth().clickable { },
+        modifier = Modifier.fillMaxWidth().clickable { onClick() },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(1.dp)
@@ -495,9 +555,67 @@ fun SettingsItem(icon: ImageVector, label: String, textColor: Color) {
                 Spacer(modifier = Modifier.width(12.dp))
                 Text(label, color = textColor, fontWeight = FontWeight.SemiBold)
             }
-            Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), modifier = Modifier.size(16.dp))
+            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f), modifier = Modifier.size(16.dp))
         }
     }
+}
+
+@Composable
+fun EditProfileDialog(
+    initialName: String,
+    initialPhone: String,
+    onDismiss: () -> Unit,
+    onSave: (String, String) -> Unit
+) {
+    var nombre by remember { mutableStateOf(initialName) }
+    var telefono by remember { mutableStateOf(initialPhone) }
+    val secondary = MaterialTheme.colorScheme.secondary
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            Button(
+                onClick = { onSave(nombre.trim(), telefono.trim()) },
+                enabled = nombre.isNotBlank(),
+                colors = ButtonDefaults.buttonColors(containerColor = secondary),
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Text("Guardar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar", color = Color.Gray)
+            }
+        },
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Edit, contentDescription = null, tint = secondary)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Editar perfil", fontWeight = FontWeight.Bold)
+            }
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedTextField(
+                    value = nombre,
+                    onValueChange = { nombre = it },
+                    label = { Text("Nombre completo") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+                OutlinedTextField(
+                    value = telefono,
+                    onValueChange = { telefono = it },
+                    label = { Text("Teléfono") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(8.dp)
+                )
+            }
+        }
+    )
 }
 
 @Preview(showBackground = true, showSystemUi = true)
