@@ -43,6 +43,8 @@ fun ProfileScreen(
     userEmail: String,
     userPhone: String = "",
     savedPoints: List<WaterPoint> = emptyList(),
+    puntosReportados: Int = 0,
+    comentariosRealizados: Int = 0,
     onLoginClick: () -> Unit = {},
     onLogoutClick: () -> Unit = {},
     onSaveProfile: (String, String) -> Unit = { _, _ -> },
@@ -115,7 +117,7 @@ fun ProfileScreen(
                     ProfileHeader(userName = userName, userEmail = userEmail)
                 }
 
-                item { ImpactSection() }
+                item { ImpactSection(puntosReportados = puntosReportados, comentariosRealizados = comentariosRealizados) }
 
                 item {
                     PreferencesSection(
@@ -271,7 +273,7 @@ fun ProfileHeader(userName: String, userEmail: String) {
 }
 
 @Composable
-fun ImpactSection() {
+fun ImpactSection(puntosReportados: Int, comentariosRealizados: Int) {
     val primary = MaterialTheme.colorScheme.primary
     val secondary = MaterialTheme.colorScheme.secondary
 
@@ -282,16 +284,16 @@ fun ImpactSection() {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             ImpactCard(
-                modifier = Modifier.weight(1f), 
-                icon = Icons.Default.AddLocation, 
-                value = "12",
-                label = "Puntos reportados", 
+                modifier = Modifier.weight(1f),
+                icon = Icons.Default.AddLocation,
+                value = puntosReportados.toString(),
+                label = "Puntos reportados",
                 accentColor = primary
             )
             ImpactCard(
                 modifier = Modifier.weight(1f),
                 icon = Icons.AutoMirrored.Filled.Chat,
-                value = "24",
+                value = comentariosRealizados.toString(),
                 label = "Comentarios realizados",
                 accentColor = secondary
             )

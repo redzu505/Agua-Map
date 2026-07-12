@@ -47,6 +47,17 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
     private val _favoritos = MutableStateFlow<Set<String>>(emptySet())
     val favoritos: StateFlow<Set<String>> = _favoritos
 
+    // Estadísticas del perfil: (reportes enviados, comentarios hechos)
+    private val _estadisticas = MutableStateFlow(0 to 0)
+    val estadisticas: StateFlow<Pair<Int, Int>> = _estadisticas
+
+    /** Carga los contadores reales de actividad del usuario para la pantalla de perfil. */
+    fun cargarEstadisticasUsuario() {
+        viewModelScope.launch {
+            _estadisticas.value = repository.getEstadisticasUsuario()
+        }
+    }
+
     fun loadFavoritos() {
         viewModelScope.launch {
             _favoritos.value = repository.getFavoritos()

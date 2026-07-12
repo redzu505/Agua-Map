@@ -178,6 +178,19 @@ class AppRepository(
         return remoteDataSource.getMiValoracion(token, userId, pointId).getOrNull()
     }
 
+    /**
+     * Estadísticas del usuario para el perfil: (reportes enviados, comentarios hechos).
+     * Devuelve (0, 0) si es invitado, no hay sesión o falla la red.
+     */
+    suspend fun getEstadisticasUsuario(): Pair<Int, Int> {
+        val token = sessionManager.obtenerAccessToken() ?: return 0 to 0
+        val userId = sessionManager.obtenerUserId()
+        if (userId.isNullOrBlank()) return 0 to 0
+        val reportes = remoteDataSource.contarReportesUsuario(token, userId)
+        val comentarios = remoteDataSource.contarComentariosUsuario(token, userId)
+        return reportes to comentarios
+    }
+
     // ==========================================
     // SECCIÓN: REPORTES
     // ==========================================

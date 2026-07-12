@@ -123,6 +123,24 @@ interface SupabaseApiService {
         @Body reporte: ReporteDto
     ): Response<ResponseBody>
 
+    // Reportes hechos por un usuario (para contar su actividad en el perfil)
+    @GET("rest/v1/reportes")
+    suspend fun getReportesDeUsuario(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Query("user_id") userId: String,         // "eq.<uuid>"
+        @Query("select") select: String = "id"
+    ): Response<List<ReporteDto>>
+
+    // Comentarios hechos por un usuario (para contar su actividad en el perfil)
+    @GET("rest/v1/comentarios")
+    suspend fun getComentariosDeUsuario(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Query("user_id") userId: String,         // "eq.<uuid>"
+        @Query("select") select: String = "id"
+    ): Response<List<ComentarioDto>>
+
     // ==========================================
     // NOTICIAS (tabla: noticias_comunidad)
     // ==========================================

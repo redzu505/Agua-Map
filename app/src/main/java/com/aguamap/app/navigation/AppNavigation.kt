@@ -129,6 +129,12 @@ fun AppNavigation(
             val puntos = homeViewModel.waterPoints.collectAsState().value
             val savedPoints = puntos.filter { it.id in favoritos }
 
+            // Estadísticas reales de actividad (reportes, comentarios)
+            val estadisticas = homeViewModel.estadisticas.collectAsState().value
+            LaunchedEffect(usuario?.id, isGuest) {
+                if (!isGuest) homeViewModel.cargarEstadisticasUsuario()
+            }
+
             //pruebas: BORRRAR LINEA LN
 
             println("AGUAMAP_DEBUG: El perfil recibió el argumento isGuest = $isGuest")
@@ -139,6 +145,8 @@ fun AppNavigation(
                 userEmail = usuario?.email ?: "",       // Pasamos el correo real o vacío
                 userPhone = usuario?.telefono ?: "",     // Para precargar el editor de perfil
                 savedPoints = savedPoints,
+                puntosReportados = estadisticas.first,
+                comentariosRealizados = estadisticas.second,
                 onSaveProfile = { nombre, telefono -> authViewModel.actualizarDatosUsuario(nombre, telefono) },
                 onNavigateToDetail = { pointId ->
                     navController.navigate(Screen.WaterPointDetail.createRoute(pointId))

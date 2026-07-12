@@ -344,6 +344,48 @@ class RemoteDataSource(private val apiService: SupabaseApiService) {
     }
 
     // ==========================================
+    // SECCIÓN: ESTADÍSTICAS DEL USUARIO (perfil)
+    // ==========================================
+
+    /** Cuenta cuántos reportes ha enviado el usuario. Devuelve 0 si falla. */
+    suspend fun contarReportesUsuario(token: String, userId: String): Int {
+        val endpoint = "GET rest/v1/reportes (conteo usuario)"
+        return try {
+            val response = apiService.getReportesDeUsuario(apiKey, "Bearer $token", userId = "eq.$userId")
+            if (response.isSuccessful) {
+                val total = response.body()?.size ?: 0
+                logOk(endpoint, "total=$total")
+                total
+            } else {
+                logFallo(endpoint, response.code(), response.errorBody()?.string() ?: "")
+                0
+            }
+        } catch (e: Exception) {
+            logExcepcion(endpoint, e)
+            0
+        }
+    }
+
+    /** Cuenta cuántos comentarios ha hecho el usuario. Devuelve 0 si falla. */
+    suspend fun contarComentariosUsuario(token: String, userId: String): Int {
+        val endpoint = "GET rest/v1/comentarios (conteo usuario)"
+        return try {
+            val response = apiService.getComentariosDeUsuario(apiKey, "Bearer $token", userId = "eq.$userId")
+            if (response.isSuccessful) {
+                val total = response.body()?.size ?: 0
+                logOk(endpoint, "total=$total")
+                total
+            } else {
+                logFallo(endpoint, response.code(), response.errorBody()?.string() ?: "")
+                0
+            }
+        } catch (e: Exception) {
+            logExcepcion(endpoint, e)
+            0
+        }
+    }
+
+    // ==========================================
     // SECCIÓN: REPORTES
     // ==========================================
 
