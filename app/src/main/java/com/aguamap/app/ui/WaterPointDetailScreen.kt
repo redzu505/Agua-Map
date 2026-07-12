@@ -253,7 +253,8 @@ fun WaterPointDetailScreen(
                 comments = comments,
                 isGuest = isGuest,
                 onAddComment = { text ->
-                    homeViewModel.addComment(pointId, text, 5)
+                    // Sin puntaje por ahora: se guarda 0 para no arrastrar valoraciones falsas
+                    homeViewModel.addComment(pointId, text, 0)
                 }
             )
 
@@ -435,16 +436,6 @@ fun CommentItem(comment: Comment) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(comment.author, fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.primary)
                 Text(comment.date, fontSize = 12.sp, color = Color.Gray)
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                repeat(5) { index ->
-                    Icon(
-                        Icons.Default.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(14.dp),
-                        tint = if (index < comment.rating) Color(0xFFFFB300) else Color.LightGray
-                    )
-                }
             }
             Spacer(modifier = Modifier.height(4.dp))
             Text(comment.content, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
