@@ -54,7 +54,10 @@ class HomeViewModel(private val repository: AppRepository) : ViewModel() {
     /** Carga los contadores reales de actividad del usuario para la pantalla de perfil. */
     fun cargarEstadisticasUsuario() {
         viewModelScope.launch {
-            _estadisticas.value = repository.getEstadisticasUsuario()
+            android.util.Log.d("AGUAMAP_NET", "🔎 cargarEstadisticasUsuario() llamado")
+            val stats = repository.getEstadisticasUsuario()
+            android.util.Log.d("AGUAMAP_NET", "🔎 estadisticas recibidas = $stats")
+            _estadisticas.value = stats
         }
     }
 

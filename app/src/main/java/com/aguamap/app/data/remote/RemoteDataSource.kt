@@ -162,6 +162,28 @@ class RemoteDataSource(private val apiService: SupabaseApiService) {
     }
 
     /**
+     * Renueva el access_token vencido usando el refresh_token. Devuelve la respuesta
+     * con el nuevo par de tokens, o falla si el refresh_token ya no es válido.
+     */
+    suspend fun refrescarToken(refreshToken: String): Result<AuthResponse> {
+        val endpoint = "POST auth/v1/token (refresh)"
+        return try {
+            val response = apiService.refrescarToken(apiKey, anonBearer, RefreshRequest(refreshToken))
+            if (response.isSuccessful && response.body() != null) {
+                logOk(endpoint, "token renovado")
+                Result.success(response.body()!!)
+            } else {
+                val errorMsg = response.errorBody()?.string() ?: "Error desconocido"
+                logFallo(endpoint, response.code(), errorMsg)
+                Result.failure(Exception(errorMsg))
+            }
+        } catch (e: Exception) {
+            logExcepcion(endpoint, e)
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Lee el rol del usuario logueado desde la tabla `perfiles`. Si la tabla no existe
      * todavía o falla, devuelve "usuario" (fail-closed: nunca da admin por error).
      */

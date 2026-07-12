@@ -13,6 +13,11 @@ data class LoginRequest(
     val password: String
 )
 
+// Para renovar el access_token vencido usando el refresh_token
+data class RefreshRequest(
+    val refresh_token: String
+)
+
 // Lo que enviamos para actualizar el perfil del usuario logueado (PUT /auth/v1/user)
 data class UpdateUserRequest(
     val data: UserMetadata

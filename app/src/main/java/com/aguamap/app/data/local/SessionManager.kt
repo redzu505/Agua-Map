@@ -118,6 +118,21 @@ class SessionManager(private val context: Context) {
             .first()[Keys.USER_ID]
     }
 
+    /** Devuelve el refresh_token guardado (o null). Sirve para renovar el access_token vencido. */
+    suspend fun obtenerRefreshToken(): String? {
+        return context.sessionDataStore.data
+            .catch { emit(emptyPreferences()) }
+            .first()[Keys.REFRESH_TOKEN]
+    }
+
+    /** Actualiza solo los tokens (tras renovar), sin tocar los datos del usuario. */
+    suspend fun actualizarTokens(accessToken: String, refreshToken: String?) {
+        context.sessionDataStore.edit { prefs ->
+            prefs[Keys.ACCESS_TOKEN] = accessToken
+            if (refreshToken != null) prefs[Keys.REFRESH_TOKEN] = refreshToken
+        }
+    }
+
     /**
      * Borra la sesión por completo (logout).
      */

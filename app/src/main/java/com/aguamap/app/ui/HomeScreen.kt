@@ -84,6 +84,9 @@ fun HomeScreen(
     // Puntos guardados (favoritos) del usuario
     val favoritos by homeViewModel.favoritos.collectAsState()
 
+    // Estadísticas reales de actividad (reportes, comentarios) para la pestaña Perfil
+    val estadisticas by homeViewModel.estadisticas.collectAsState()
+
     LaunchedEffect(Unit) {
         homeViewModel.loadWaterPoints()
         if (LocationUtils.hasLocationPermissions(context)) {
@@ -102,6 +105,13 @@ fun HomeScreen(
     val filters = listOf("Todos", "Fuentes", "Pozos", "Filtrada", "Grifo")
     var selectedFilter by remember { mutableStateOf("Todos") }
     var selectedTab by remember { mutableStateOf("Points") }
+
+    // Al entrar a la pestaña Perfil (usuario registrado), cargamos sus contadores reales
+    LaunchedEffect(selectedTab, isGuest) {
+        if (selectedTab == "Profile" && !isGuest) {
+            homeViewModel.cargarEstadisticasUsuario()
+        }
+    }
 
     // Si se asigna un destino de ruta desde fuera, cambiamos a la pestaña de Mapa
     LaunchedEffect(routeDestination) {
@@ -357,6 +367,8 @@ fun HomeScreen(
                         userEmail = userEmail,
                         userPhone = userPhone,
                         savedPoints = waterPointsState.filter { it.id in favoritos },
+                        puntosReportados = estadisticas.first,
+                        comentariosRealizados = estadisticas.second,
                         onBack = { selectedTab = "Points" },
                         onLoginClick = onNavigateToLogin,
                         onLogoutClick = onLogoutClick,

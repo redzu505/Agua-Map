@@ -17,6 +17,8 @@ import com.aguamap.app.domain.WaterPointReport
 import com.aguamap.app.domain.WaterPointStatus
 import com.aguamap.app.domain.WaterPointType
 import com.aguamap.app.util.SyncReportWorker
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * CAPA DE DATOS - REPOSITORIO
@@ -84,7 +86,7 @@ class AppRepository(
      * Actualiza el perfil del usuario logueado en Supabase Auth.
      */
     suspend fun actualizarPerfil(nombre: String, telefono: String): Result<Unit> {
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
             ?: return Result.failure(Exception("No hay sesión activa"))
         return remoteDataSource.actualizarPerfil(token, nombre, telefono)
     }
@@ -93,7 +95,7 @@ class AppRepository(
      * Cierra la sesión del lado del servidor (best-effort).
      */
     suspend fun cerrarSesionRemota() {
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
         remoteDataSource.cerrarSesion(token)
     }
 
@@ -103,7 +105,7 @@ class AppRepository(
 
     suspend fun getWaterPoints(): List<WaterPoint> {
         // 1. Intentamos traer de Supabase
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
         val remoto = remoteDataSource.getPuntos(token)
 
         remoto.onSuccess { puntosRemotos ->
@@ -128,7 +130,7 @@ class AppRepository(
         // Guardamos siempre en local (offline-first)
         localDataSource.saveWaterPoint(point)
         // Y replicamos en Supabase (si falla, queda solo local)
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
         remoteDataSource.crearPunto(token, point)
     }
 
@@ -137,7 +139,7 @@ class AppRepository(
     // ==========================================
 
     suspend fun getComments(pointId: String): List<Comment> {
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
         remoteDataSource.getComentarios(token, pointId).onSuccess { remotos ->
             if (remotos.isNotEmpty()) {
                 remotos.forEach { localDataSource.saveComment(pointId, it) }
@@ -149,7 +151,7 @@ class AppRepository(
 
     suspend fun addComment(pointId: String, comment: Comment) {
         localDataSource.saveComment(pointId, comment)
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
         remoteDataSource.crearComentario(token, pointId, comment)
     }
 
@@ -162,7 +164,7 @@ class AppRepository(
      * El promedio del punto lo recalcula un trigger en Supabase.
      */
     suspend fun valorarPunto(pointId: String, valor: Int): Result<Unit> {
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
             ?: return Result.failure(Exception("Debes iniciar sesión para valorar"))
         return remoteDataSource.valorarPunto(token, pointId, valor)
     }
@@ -172,9 +174,58 @@ class AppRepository(
      * o si es invitado / no hay sesión).
      */
     suspend fun getMiValoracion(pointId: String): Int? {
-        val token = sessionManager.obtenerAccessToken() ?: return null
+        val token = tokenValido() ?: return null
         val userId = obtenerUserIdActual(token) ?: return null
         return remoteDataSource.getMiValoracion(token, userId, pointId).getOrNull()
+    }
+
+    // Serializa el refresco del token para que dos peticiones en paralelo no lo renueven a la vez
+    private val refreshMutex = Mutex()
+
+    /**
+     * Devuelve un access_token VÁLIDO. Si el guardado está vencido, lo renueva con el
+     * refresh_token y persiste el nuevo par. Si no se puede renovar, devuelve el que había
+     * (que fallará con 401, pero sin romper la app). Es el reemplazo de obtenerAccessToken()
+     * para todas las peticiones autenticadas.
+     */
+    private suspend fun tokenValido(): String? {
+        val token = sessionManager.obtenerAccessToken() ?: return null
+        if (!tokenExpirado(token)) return token
+
+        return refreshMutex.withLock {
+            // Re-chequeo: otro coroutine pudo renovarlo mientras esperábamos el lock
+            val actual = sessionManager.obtenerAccessToken() ?: return@withLock null
+            if (!tokenExpirado(actual)) return@withLock actual
+
+            val refresh = sessionManager.obtenerRefreshToken() ?: return@withLock actual
+            val nuevo = remoteDataSource.refrescarToken(refresh).getOrNull()
+            val nuevoAccess = nuevo?.access_token
+            if (nuevoAccess != null) {
+                sessionManager.actualizarTokens(nuevoAccess, nuevo.refresh_token)
+                nuevoAccess
+            } else {
+                actual // no se pudo renovar: devolvemos el viejo (dará 401, pero no crashea)
+            }
+        }
+    }
+
+    /** Indica si el JWT ya venció (con 60s de margen) leyendo el claim "exp". */
+    private fun tokenExpirado(token: String): Boolean {
+        return try {
+            val partes = token.split(".")
+            if (partes.size < 2) return false
+            val payload = android.util.Base64.decode(
+                partes[1],
+                android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING
+            )
+            val json = org.json.JSONObject(String(payload, Charsets.UTF_8))
+            val exp = json.optLong("exp", 0L) // epoch en segundos
+            if (exp == 0L) return false
+            val ahora = System.currentTimeMillis() / 1000
+            ahora >= (exp - 60)
+        } catch (e: Exception) {
+            false // ante la duda, no forzamos refresco
+        }
     }
 
     /**
@@ -208,7 +259,7 @@ class AppRepository(
      * Devuelve (0, 0) si es invitado, no hay sesión o falla la red.
      */
     suspend fun getEstadisticasUsuario(): Pair<Int, Int> {
-        val token = sessionManager.obtenerAccessToken() ?: return 0 to 0
+        val token = tokenValido() ?: return 0 to 0
         val userId = obtenerUserIdActual(token) ?: return 0 to 0
         val reportes = remoteDataSource.contarReportesUsuario(token, userId)
         val comentarios = remoteDataSource.contarComentariosUsuario(token, userId)
@@ -225,7 +276,7 @@ class AppRepository(
     // ==========================================
 
     suspend fun getReports(pointId: String): List<WaterPointReport> {
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
         remoteDataSource.getReportes(token, pointId).onSuccess { remotos ->
             if (remotos.isNotEmpty()) {
                 remotos.forEach { localDataSource.saveReport(it) }
@@ -240,7 +291,7 @@ class AppRepository(
      * Supabase Storage y guarda la URL pública en el reporte.
      */
     suspend fun addReport(report: WaterPointReport, imageBytes: ByteArray? = null): Result<Unit> {
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
 
         // 1. Si hay foto, la subimos a Storage y obtenemos su URL pública
         var reporteFinal = report
@@ -279,7 +330,7 @@ class AppRepository(
      * Se usa en la pantalla de Comunidad. Offline-first: remoto con fallback a local.
      */
     suspend fun getRecentReports(): List<WaterPointReport> {
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
         remoteDataSource.getReportesRecientes(token).onSuccess { remotos ->
             if (remotos.isNotEmpty()) return remotos
         }
@@ -295,7 +346,7 @@ class AppRepository(
      * de Supabase y refresca la caché local; si no, usa la caché local.
      */
     suspend fun getFavoritos(): Set<String> {
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
         if (token != null) {
             remoteDataSource.getFavoritos(token).onSuccess { remoto ->
                 favoritosManager.guardar(remoto)
@@ -311,7 +362,7 @@ class AppRepository(
      */
     suspend fun toggleFavorito(pointId: String): Boolean {
         val actuales = favoritosManager.favoritosActuales().toMutableSet()
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
 
         return if (pointId in actuales) {
             actuales.remove(pointId)
@@ -336,7 +387,7 @@ class AppRepository(
     // ==========================================
 
     suspend fun getNews(): List<CommunityNews> {
-        val token = sessionManager.obtenerAccessToken()
+        val token = tokenValido()
         remoteDataSource.getNoticias(token).onSuccess { remotas ->
             if (remotas.isNotEmpty()) return remotas
         }

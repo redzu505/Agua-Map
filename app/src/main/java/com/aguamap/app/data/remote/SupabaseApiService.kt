@@ -32,6 +32,14 @@ interface SupabaseApiService {
         @Body request: LoginRequest
     ): Response<AuthResponse>
 
+    // Renueva el access_token vencido usando el refresh_token
+    @POST("auth/v1/token?grant_type=refresh_token")
+    suspend fun refrescarToken(
+        @Header("apikey") apiKey: String,
+        @Header("Authorization") bearerToken: String,
+        @Body request: RefreshRequest
+    ): Response<AuthResponse>
+
     // Actualiza la metadata del usuario logueado (nombre, teléfono, etc.)
     @PUT("auth/v1/user")
     suspend fun updateUser(
